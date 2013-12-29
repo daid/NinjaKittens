@@ -181,9 +181,12 @@ class Path(object):
 		tmp = numpy.matrix([p.real, p.imag], numpy.float64) * self._relMatrix
 		return complex(tmp[0,0], tmp[0,1])
 
+
 class Drawing(object):
 	def __init__(self):
 		self.paths = []
+		self._sizeMin = None
+		self._sizeMax = None
 
 	def addPath(self, x, y, matrix=numpy.matrix(numpy.identity(3, numpy.float64))):
 		p = Path(x, y, matrix)
@@ -192,6 +195,9 @@ class Drawing(object):
 
 	def _postProcessPaths(self):
 		for path in self.paths:
+			if len(path._nodes) < 2:
+				self.paths.remove(path)
+		for path in self.paths:
 			if not path.isClosed():
 				if abs(path._nodes[-1].position - path._startPoint) < 0.001:
 					path._isClosed = True
@@ -199,6 +205,29 @@ class Drawing(object):
 				if abs(path._nodes[0].radius - path._nodes[1].radius) < 0.001:
 					pass
 					#path._nodes = []
+
+		for path in self.paths:
+			for p in map(lambda n: n[0], path.getPoints(1.0)):
+				if self._sizeMax is None:
+					self._sizeMax = p
+					self._sizeMin = p
+				if p.real > self._sizeMax.real:
+					self._sizeMax = complex(p.real, self._sizeMax.imag)
+				if p.imag > self._sizeMax.imag:
+					self._sizeMax = complex(self._sizeMax.real, p.imag)
+				if p.real < self._sizeMin.real:
+					self._sizeMin = complex(p.real, self._sizeMin.imag)
+				if p.imag < self._sizeMin.imag:
+					self._sizeMin = complex(self._sizeMin.real, p.imag)
+		if self._sizeMax is None:
+			self._sizeMax = complex(0, 0)
+			self._sizeMin = complex(0, 0)
+
+	def getMin(self):
+		return self._sizeMin
+
+	def getMax(self):
+		return self._sizeMax
 
 	def dumpToFile(self, file):
 		file.write("%d\n" % (len(self.paths)))

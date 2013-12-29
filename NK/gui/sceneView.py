@@ -120,9 +120,23 @@ class SceneView(openglGui.glGuiPanel):
 		self._modelMatrix = glGetDoublev(GL_MODELVIEW_MATRIX)
 		self._projMatrix = glGetDoublev(GL_PROJECTION_MATRIX)
 
+		self._drawMachine()
+
 		for obj in self._scene.getObjectList():
+			glPushMatrix()
+			glTranslatef(obj._position.real, obj._position.imag, 0)
 			for path in obj.paths:
 				glBegin(GL_LINE_STRIP)
 				for p in path.getPoints(1.0):
 					glVertex3f(p[0].real, p[0].imag, 0)
 				glEnd()
+			glPopMatrix()
+
+	def _drawMachine(self):
+		s = self._machineSize
+		glBegin(GL_LINE_LOOP)
+		glVertex3f(-s[0] / 2, s[1] / 2, 0)
+		glVertex3f(-s[0] / 2,-s[1] / 2, 0)
+		glVertex3f( s[0] / 2,-s[1] / 2, 0)
+		glVertex3f( s[0] / 2, s[1] / 2, 0)
+		glEnd()

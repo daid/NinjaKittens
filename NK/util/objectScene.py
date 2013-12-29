@@ -6,6 +6,7 @@ class Scene(object):
 
 	def addObject(self, obj):
 		self._objectList.append(obj)
+		obj._position = -((obj.getMin() + obj.getMax()) / 2.0)
 
 	def getObjectList(self):
 		return self._objectList

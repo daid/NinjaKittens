@@ -58,7 +58,8 @@ class DXF(drawing.Drawing):
 			else:
 				self._polyLine.addLineTo(float(obj[10]), float(obj[20]))
 		else:
-			print type
+			print 'type=%s' % type
+			print obj
 
 if __name__ == '__main__':
 	for n in xrange(1, len(sys.argv)):
