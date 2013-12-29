@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 __copyright__ = "Copyright (C) 2013 David Braam - Released under terms of the AGPLv3 License"
 
 import time
@@ -8,7 +7,7 @@ import os
 import numpy
 numpy.seterr(all='ignore')
 
-from Cura.util import polygon
+from NK.util import polygon
 
 class printableObject(object):
 	def __init__(self, originFilename):

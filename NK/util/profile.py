@@ -762,50 +762,12 @@ def isTagIn(tag, contents):
 	contents = re.sub(';[^\n]*\n', '', contents)
 	return tag in contents
 
-### Get the alteration file for output. (Used by Skeinforge)
-def getAlterationFileContents(filename, extruderCount = 1):
+### Get the alteration file for output.
+def getAlterationFileContents(filename):
 	prefix = ''
 	postfix = ''
 	alterationContents = getAlterationFile(filename)
-	if getMachineSetting('gcode_flavor') == 'UltiGCode':
-		if filename == 'end.gcode':
-			return 'M25 ;Stop reading from this point on.\n;NINJA_PROFILE_STRING:%s\n' % (getProfileString())
-		return ''
-	if filename == 'start.gcode':
-		if extruderCount > 1:
-			alterationContents = getAlterationFile("start%d.gcode" % (extruderCount))
-		#For the start code, hack the temperature and the steps per E value into it. So the temperature is reached before the start code extrusion.
-		#We also set our steps per E here, if configured.
-		eSteps = getMachineSettingFloat('steps_per_e')
-		if eSteps > 0:
-			prefix += 'M92 E%f\n' % (eSteps)
-		temp = getProfileSettingFloat('print_temperature')
-		bedTemp = 0
-		if getMachineSetting('has_heated_bed') == 'True':
-			bedTemp = getProfileSettingFloat('print_bed_temperature')
-
-		if bedTemp > 0 and not isTagIn('{print_bed_temperature}', alterationContents):
-			prefix += 'M140 S%f\n' % (bedTemp)
-		if temp > 0 and not isTagIn('{print_temperature}', alterationContents):
-			if extruderCount > 0:
-				for n in xrange(1, extruderCount):
-					t = temp
-					if n > 0 and getProfileSettingFloat('print_temperature%d' % (n+1)) > 0:
-						t = getProfileSettingFloat('print_temperature%d' % (n+1))
-					prefix += 'M104 T%d S%f\n' % (n, t)
-				for n in xrange(0, extruderCount):
-					t = temp
-					if n > 0 and getProfileSettingFloat('print_temperature%d' % (n+1)) > 0:
-						t = getProfileSettingFloat('print_temperature%d' % (n+1))
-					prefix += 'M109 T%d S%f\n' % (n, t)
-				prefix += 'T0\n'
-			else:
-				prefix += 'M109 S%f\n' % (temp)
-		if bedTemp > 0 and not isTagIn('{print_bed_temperature}', alterationContents):
-			prefix += 'M190 S%f\n' % (bedTemp)
-	elif filename == 'end.gcode':
-		if extruderCount > 1:
-			alterationContents = getAlterationFile("end%d.gcode" % (extruderCount))
+	if filename == 'end.gcode':
 		#Append the profile string to the end of the GCode, so we can load it from the GCode file later.
 		postfix = ';NINJA_PROFILE_STRING:%s\n' % (getProfileString())
 	return unicode(prefix + re.sub("(.)\{([^\}]*)\}", replaceTagMatch, alterationContents).rstrip() + '\n' + postfix).strip().encode('utf-8') + '\n'

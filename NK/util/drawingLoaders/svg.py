@@ -7,7 +7,7 @@ import sys
 import numpy
 from xml.etree import ElementTree
 
-from Cura.util.drawingLoader import drawing
+from NK.util.drawingLoaders import drawing
 
 def applyTransformString(matrix, transform):
 	while transform != '':

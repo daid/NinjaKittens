@@ -9,8 +9,8 @@ try:
 except:
 	from xml.etree import ElementTree
 
-from Cura.util import mesh
-from Cura.util import profile
+from NK.util import mesh
+from NK.util import profile
 
 def loadScene(filename):
 	try:
