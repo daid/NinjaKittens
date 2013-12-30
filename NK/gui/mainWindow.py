@@ -8,7 +8,6 @@ import webbrowser
 from NK.util import profile
 from NK.gui import configBase
 from NK.gui import alterationPanel
-from NK.gui import pluginPanel
 from NK.gui import sceneView
 from NK.gui.util import dropTarget
 
@@ -420,10 +419,6 @@ class normalSettingsPanel(configBase.configPanelBase):
 		self._addSettingsToPanels('advanced', left, right)
 		self.SizeLabelWidths(left, right)
 
-		#Plugin page
-		self.pluginPanel = pluginPanel.pluginPanel(self.nb, callback)
-		self.nb.AddPage(self.pluginPanel, _("Plugins"))
-
 		#Alteration page
 		self.alterationPanel = alterationPanel.alterationPanel(self.nb, callback)
 		self.nb.AddPage(self.alterationPanel, "Start/End-GCode")
@@ -513,4 +508,3 @@ class normalSettingsPanel(configBase.configPanelBase):
 		super(normalSettingsPanel, self).updateProfileToControls()
 		if self.alterationPanel is not None:
 			self.alterationPanel.updateProfileToControls()
-		self.pluginPanel.updateProfileToControls()

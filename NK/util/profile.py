@@ -151,13 +151,12 @@ class setting(object):
 def _(n):
 	return n
 
-setting('drill_diameter',            4.0, float, 'basic',    _('Quality')).setRange(0.0001).setLabel(_("Drill diameter (mm)"), _("Layer height in millimeters.\nThis is the most important setting to determine the quality of your print. Normal quality prints are 0.1mm, high quality is 0.06mm. You can go up to 0.25mm with an Ultimaker for very fast prints at low quality."))
-setting('cutting_feedrate',           10, float, 'basic',    _('Speed')).setRange(1).setLabel(_("Cutting speed (mm/s)"), _("Speed at which printing happens. A well adjusted Ultimaker can reach 150mm/s, but for good quality prints you want to print slower. Printing speed depends on a lot of factors. So you will be experimenting with optimal settings for this."))
-setting('travel_speed',             50.0, float, 'basic',    _('Speed')).setRange(0.1).setLabel(_("Travel speed (mm/s)"), _("Speed at which travel moves are done, a high quality build Ultimaker can reach speeds of 250mm/s. But some machines might miss steps then."))
-setting('bottom_layer_speed',         20, float, 'advanced', _('Speed')).setRange(0.1).setLabel(_("Bottom layer speed (mm/s)"), _("Print speed for the bottom layer, you want to print the first layer slower so it sticks better to the printer bed."))
-setting('infill_speed',              0.0, float, 'advanced', _('Speed')).setRange(0.0).setLabel(_("Infill speed (mm/s)"), _("Speed at which infill parts are printed. If set to 0 then the print speed is used for the infill. Printing the infill faster can greatly reduce printing, but this can negatively effect print quality.."))
-setting('cool_min_layer_time',         5, float, 'advanced', _('Cool')).setRange(0).setLabel(_("Minimal layer time (sec)"), _("Minimum time spend in a layer, gives the layer time to cool down before the next layer is put on top. If the layer will be placed down too fast the printer will slow down to make sure it has spend at least this amount of seconds printing this layer."))
-setting('fan_enabled',              True, bool,  'advanced', _('Cool')).setLabel(_("Enable cooling fan"), _("Enable the cooling fan during the print. The extra cooling from the cooling fan is essential during faster prints."))
+setting('cut_depth',                 5.0, float, 'basic',    _('Quality')).setRange(0.01).setLabel(_("Cut depth (mm)"), _(""))
+setting('drill_diameter',            4.0, float, 'basic',    _('Quality')).setRange(0.0001).setLabel(_("Drill diameter (mm)"), _(""))
+setting('cutting_feedrate',           10, float, 'basic',    _('Speed')).setRange(1).setLabel(_("Cutting speed (mm/s)"), _(""))
+setting('cut_depth_step',            1.0, float, 'advanced', _('Quality')).setRange(1).setLabel(_("Cut depth step (mm)"), _(""))
+setting('travel_height',             5.0, float, 'advanced', _('Quality')).setRange(0.1).setLabel(_("Travel height (mm)"), _(""))
+setting('travel_speed',             50.0, float, 'advanced', _('Speed')).setRange(0.1).setLabel(_("Travel speed (mm/s)"), _("Speed at which travel moves are done."))
 
 setting('plugin_config', '', str, 'hidden', 'hidden')
 

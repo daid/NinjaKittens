@@ -30,6 +30,7 @@ class SceneView(openglGui.glGuiPanel):
 		self._pitch = 0
 		self._zoom = 300
 		self._viewTarget = numpy.array([0,0,0], numpy.float32)
+		self._platformTexture = None
 
 		self._loadButton = openglGui.glButton(self, 4, _("Load"), (0, 0), self.ShowLoadDialog)
 
@@ -42,7 +43,7 @@ class SceneView(openglGui.glGuiPanel):
 		self.updateProfileToControls()
 
 	def sceneUpdated(self):
-		pass
+		self._scene.update()
 
 	def ShowLoadDialog(self, button):
 		dlg=wx.FileDialog(self, _("Open 3D model"), os.path.split(profile.getPreference('lastFile'))[0], style=wx.FD_OPEN|wx.FD_FILE_MUST_EXIST|wx.FD_MULTIPLE)
@@ -75,6 +76,25 @@ class SceneView(openglGui.glGuiPanel):
 		if self._zoom > numpy.max(self._machineSize) * 3:
 			self._zoom = numpy.max(self._machineSize) * 3
 		self.Refresh()
+
+	def OnMouseMotion(self,e):
+		if e.Dragging():
+			if not e.LeftIsDown() and e.RightIsDown():
+				self._yaw += e.GetX() - self._mouseX
+				self._pitch -= e.GetY() - self._mouseY
+				if self._pitch > 90:
+					self._pitch = 90
+				if self._pitch < 0:
+					self._pitch = 0
+			elif (e.LeftIsDown() and e.RightIsDown()) or e.MiddleIsDown():
+				self._zoom += e.GetY() - self._mouseY
+				if self._zoom < 1:
+					self._zoom = 1
+				if self._zoom > numpy.max(self._machineSize) * 3:
+					self._zoom = numpy.max(self._machineSize) * 3
+
+		self._mouseX = e.GetX()
+		self._mouseY = e.GetY()
 
 	def _init3DView(self):
 		# set viewing projection
@@ -116,27 +136,52 @@ class SceneView(openglGui.glGuiPanel):
 		glRotate(self._yaw, 0,0,1)
 		glTranslate(-self._viewTarget[0],-self._viewTarget[1],-self._viewTarget[2])
 
+		glDisable(GL_DEPTH_TEST)
+		self._drawMachine()
+		glEnable(GL_DEPTH_TEST)
+
 		self._viewport = glGetIntegerv(GL_VIEWPORT)
 		self._modelMatrix = glGetDoublev(GL_MODELVIEW_MATRIX)
 		self._projMatrix = glGetDoublev(GL_PROJECTION_MATRIX)
-
-		self._drawMachine()
 
 		for obj in self._scene.getObjectList():
 			glPushMatrix()
 			glTranslatef(obj._position.real, obj._position.imag, 0)
 			for path in obj.paths:
+				if path.isClosed():
+					glColor3f(0,0,0)
+				else:
+					glColor3f(1,0,0)
 				glBegin(GL_LINE_STRIP)
 				for p in path.getPoints(1.0):
 					glVertex3f(p[0].real, p[0].imag, 0)
 				glEnd()
 			glPopMatrix()
 
+		glColor3f(0,1,1)
+		glBegin(GL_LINE_STRIP)
+		for p in self._scene.engine.resultPoints:
+			glVertex3f(p[0], p[1], p[2])
+		glEnd()
+
 	def _drawMachine(self):
+		if self._platformTexture is None:
+			self._platformTexture = opengl.loadGLTexture('checkerboard.png')
+			glBindTexture(GL_TEXTURE_2D, self._platformTexture)
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+		glColor4f(1,1,1,0.5)
+		glBindTexture(GL_TEXTURE_2D, self._platformTexture)
+		glEnable(GL_TEXTURE_2D)
+		glBegin(GL_TRIANGLE_FAN)
 		s = self._machineSize
-		glBegin(GL_LINE_LOOP)
-		glVertex3f(-s[0] / 2, s[1] / 2, 0)
-		glVertex3f(-s[0] / 2,-s[1] / 2, 0)
-		glVertex3f( s[0] / 2,-s[1] / 2, 0)
-		glVertex3f( s[0] / 2, s[1] / 2, 0)
+		verts = [
+			[-s[0]/2, s[0]/2],
+			[-s[0]/2,-s[0]/2],
+			[ s[0]/2,-s[0]/2],
+			[ s[0]/2, s[0]/2],
+		]
+		for p in verts:
+			glTexCoord2f(p[0]/20, p[1]/20)
+			glVertex3f(p[0], p[1], 0)
 		glEnd()

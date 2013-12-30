@@ -195,7 +195,7 @@ class Drawing(object):
 
 	def _postProcessPaths(self):
 		for path in self.paths:
-			if len(path._nodes) < 2:
+			if len(path._nodes) < 1:
 				self.paths.remove(path)
 		for path in self.paths:
 			if not path.isClosed():
