@@ -3,6 +3,11 @@ __copyright__ = "Copyright (C) 2013 David Braam - Released under terms of the AG
 
 def main():
 	from NK.gui import app
+	from NK.util import profile
+
+	profile.loadPreferences(profile.getPreferencePath())
+	profile.loadProfile(profile.getDefaultProfilePath())
+
 	args = []
 	app.NKApp(args).MainLoop()
 

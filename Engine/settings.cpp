@@ -14,6 +14,7 @@ ConfigSettings::ConfigSettings()
     SETTING(travelFeedrate, 150 * 60);
     SETTING(cutDepth, 5000);
     SETTING(cutDepthStep, 1000);
+    SETTING(engraveDepth, 1000);
 }
 
 #undef STRINGIFY

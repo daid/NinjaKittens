@@ -362,7 +362,7 @@ class mainWindow(wx.Frame):
 				wx.TheClipboard.Open()
 				clipData = wx.TextDataObject()
 				self.lastTriedClipboard = profile.getProfileString()
-				profileString = profile.insertNewlines("CURA_PROFILE_STRING:" + self.lastTriedClipboard)
+				profileString = profile.insertNewlines("NINJA_PROFILE_STRING:" + self.lastTriedClipboard)
 				clipData.SetText(profileString)
 				wx.TheClipboard.SetData(clipData)
 				wx.TheClipboard.Close()
@@ -411,13 +411,11 @@ class normalSettingsPanel(configBase.configPanelBase):
 		self.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
 		self.GetSizer().Add(self.nb, 1, wx.EXPAND)
 
-		(left, right, self.printPanel) = self.CreateDynamicConfigTab(self.nb, 'Basic')
-		self._addSettingsToPanels('basic', left, right)
-		self.SizeLabelWidths(left, right)
+		self.printPanel = self.CreateConfigTab(self.nb, 'Basic')
+		self._addSettingsToPanel('basic', self.printPanel)
 
-		(left, right, self.advancedPanel) = self.CreateDynamicConfigTab(self.nb, 'Advanced')
-		self._addSettingsToPanels('advanced', left, right)
-		self.SizeLabelWidths(left, right)
+		self.advancedPanel = self.CreateConfigTab(self.nb, 'Advanced')
+		self._addSettingsToPanel('advanced', self.advancedPanel)
 
 		#Alteration page
 		self.alterationPanel = alterationPanel.alterationPanel(self.nb, callback)
@@ -426,8 +424,12 @@ class normalSettingsPanel(configBase.configPanelBase):
 		self.Bind(wx.EVT_SIZE, self.OnSize)
 
 		self.nb.SetSize(self.GetSize())
-		self.UpdateSize(self.printPanel)
-		self.UpdateSize(self.advancedPanel)
+
+	def _addSettingsToPanel(self, category, panel):
+		for title in profile.getSubCategoriesFor(category):
+			configBase.TitleRow(panel, _(title))
+			for s in profile.getSettingsForCategory(category, title):
+				configBase.SettingRow(panel, s.getName())
 
 	def _addSettingsToPanels(self, category, left, right):
 		count = len(profile.getSubCategoriesFor(category)) + len(profile.getSettingsForCategory(category))
@@ -455,54 +457,6 @@ class normalSettingsPanel(configBase.configPanelBase):
 
 		# Propegate the OnSize() event (just in case)
 		e.Skip()
-
-		# Perform out resize magic
-		self.UpdateSize(self.printPanel)
-		self.UpdateSize(self.advancedPanel)
-
-	def UpdateSize(self, configPanel):
-		sizer = configPanel.GetSizer()
-
-		# Pseudocde
-		# if horizontal:
-		#     if width(col1) < best_width(col1) || width(col2) < best_width(col2):
-		#         switch to vertical
-		# else:
-		#     if width(col1) > (best_width(col1) + best_width(col1)):
-		#         switch to horizontal
-		#
-
-		col1 = configPanel.leftPanel
-		colSize1 = col1.GetSize()
-		colBestSize1 = col1.GetBestSize()
-		col2 = configPanel.rightPanel
-		colSize2 = col2.GetSize()
-		colBestSize2 = col2.GetBestSize()
-
-		orientation = sizer.GetOrientation()
-
-		if orientation == wx.HORIZONTAL:
-			if (colSize1[0] <= colBestSize1[0]) or (colSize2[0] <= colBestSize2[0]):
-				configPanel.Freeze()
-				sizer = wx.BoxSizer(wx.VERTICAL)
-				sizer.Add(configPanel.leftPanel, flag=wx.EXPAND)
-				sizer.Add(configPanel.rightPanel, flag=wx.EXPAND)
-				configPanel.SetSizer(sizer)
-				#sizer.Layout()
-				configPanel.Layout()
-				self.Layout()
-				configPanel.Thaw()
-		else:
-			if max(colSize1[0], colSize2[0]) > (colBestSize1[0] + colBestSize2[0]):
-				configPanel.Freeze()
-				sizer = wx.BoxSizer(wx.HORIZONTAL)
-				sizer.Add(configPanel.leftPanel, proportion=1, border=35, flag=wx.EXPAND)
-				sizer.Add(configPanel.rightPanel, proportion=1, flag=wx.EXPAND)
-				configPanel.SetSizer(sizer)
-				#sizer.Layout()
-				configPanel.Layout()
-				self.Layout()
-				configPanel.Thaw()
 
 	def updateProfileToControls(self):
 		super(normalSettingsPanel, self).updateProfileToControls()

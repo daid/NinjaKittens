@@ -29,11 +29,19 @@ class configPanelBase(wx.Panel):
 		self._callback = changeCallback
 	
 	def CreateConfigTab(self, nb, name):
-		leftConfigPanel, rightConfigPanel, configPanel = self.CreateConfigPanel(nb)
+		configPanel = self.CreateSingleConfigPanel(nb)
 		nb.AddPage(configPanel, name)
-		return leftConfigPanel, rightConfigPanel
-	
-	def CreateConfigPanel(self, parent):
+		return configPanel
+
+	def CreateSingleConfigPanel(self, parent):
+		configPanel = wx.Panel(parent)
+		configPanel.main = self
+
+		sizer = wx.GridBagSizer(2, 2)
+		configPanel.SetSizer(sizer)
+		return configPanel
+
+	def CreateDualConfigPanel(self, parent):
 		configPanel = wx.Panel(parent);
 		leftConfigPanel = wx.Panel(configPanel)
 		rightConfigPanel = wx.Panel(configPanel)
@@ -49,38 +57,6 @@ class configPanelBase(wx.Panel):
 		sizer.Add(rightConfigPanel)
 		leftConfigPanel.main = self
 		rightConfigPanel.main = self
-		return leftConfigPanel, rightConfigPanel, configPanel
-
-	def CreateDynamicConfigTab(self, nb, name):
-		configPanel = wx.lib.scrolledpanel.ScrolledPanel(nb)	
-		#configPanel = wx.Panel(nb);
-		leftConfigPanel = wx.Panel(configPanel)
-		rightConfigPanel = wx.Panel(configPanel)
-
-		sizer = wx.GridBagSizer(2, 2)
-		leftConfigPanel.SetSizer(sizer)
-		#sizer.AddGrowableCol(1)
-
-		sizer = wx.GridBagSizer(2, 2)
-		rightConfigPanel.SetSizer(sizer)
-		#sizer.AddGrowableCol(1)
-
-		sizer = wx.BoxSizer(wx.HORIZONTAL)
-		sizer.Add(leftConfigPanel, proportion=1, border=35, flag=wx.EXPAND)
-		sizer.Add(rightConfigPanel, proportion=1, flag=wx.EXPAND)
-		configPanel.SetSizer(sizer)
-
-		configPanel.SetAutoLayout(1)
-		configPanel.SetupScrolling(scroll_x=False, scroll_y=True)
-
-		leftConfigPanel.main = self
-		rightConfigPanel.main = self
-
-		configPanel.leftPanel = leftConfigPanel
-		configPanel.rightPanel = rightConfigPanel
-
-		nb.AddPage(configPanel, name)
-
 		return leftConfigPanel, rightConfigPanel, configPanel
 
 	def OnPopupDisplay(self, setting):

@@ -100,6 +100,42 @@ public:
         clipper.Execute(ClipperLib::ctUnion, ret.polygons);
         return ret;
     }
+    
+    bool orientation(int n)
+    {
+        return ClipperLib::Orientation(polygons[n]);
+    }
+
+    double area(int n)
+    {
+        return ClipperLib::Area(polygons[n]);
+    }
+    
+    Point centerOfMass(int idx)
+    {
+        double x = 0, y = 0;
+        Point p0 = polygons[idx][polygons[idx].size()-1];
+        for(unsigned int n=0; n<polygons[idx].size(); n++)
+        {
+            Point p1 = polygons[idx][n];
+            double second_factor = (p0.X * p1.Y) - (p1.X * p0.Y);
+            
+            x += double(p0.X + p1.X) * second_factor;
+            y += double(p0.Y + p1.Y) * second_factor;
+            p0 = p1;
+        }
+
+        double a = area(idx);
+        x = x / 6 / a;
+        y = y / 6 / a;
+
+        if (x < 0)
+        {
+            x = -x;
+            y = -y;
+        }
+        return Point(x, y);
+    }
 private:
     void _processPolyTreeNode(ClipperLib::PolyNode* node, vector<Polygons>& ret) const
     {
@@ -144,32 +180,6 @@ public:
         }
     }
 };
-
-INLINE Point centerOfMass(const ClipperLib::Path& poly)
-{
-    double x = 0, y = 0;
-    Point p0 = poly[poly.size()-1];
-    for(unsigned int n=0; n<poly.size(); n++)
-    {
-        Point p1 = poly[n];
-        double second_factor = (p0.X * p1.Y) - (p1.X * p0.Y);
-        
-        x += double(p0.X + p1.X) * second_factor;
-        y += double(p0.Y + p1.Y) * second_factor;
-        p0 = p1;
-    }
-
-    double area = Area(poly);
-    x = x / 6 / area;
-    y = y / 6 / area;
-
-    if (x < 0)
-    {
-        x = -x;
-        y = -y;
-    }
-    return Point(x, y);
-}
 
 /* Axis aligned boundary box */
 class AABB

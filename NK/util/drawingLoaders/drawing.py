@@ -4,6 +4,8 @@ __copyright__ = "Copyright (C) 2013 David Braam - Released under terms of the AG
 import math
 import numpy
 
+from NK.util import polygon
+
 class Node(object):
 	LINE = 0
 	ARC = 1
@@ -194,9 +196,21 @@ class Drawing(object):
 		return p
 
 	def _postProcessPaths(self):
+		for path1 in self.paths:
+			if not path1.isClosed() and len(path1._nodes) > 0:
+				for path2 in self.paths:
+					if path1 != path2 and not path2.isClosed():
+						if abs(path1._nodes[-1].position - path2._startPoint) < 0.001:
+							path1._nodes += path2._nodes
+							path2._nodes = []
+
+		cleanList = []
 		for path in self.paths:
 			if len(path._nodes) < 1:
-				self.paths.remove(path)
+				cleanList.append(path)
+		for path in cleanList:
+			self.paths.remove(path)
+
 		for path in self.paths:
 			if not path.isClosed():
 				if abs(path._nodes[-1].position - path._startPoint) < 0.001:
@@ -228,6 +242,25 @@ class Drawing(object):
 
 	def getMax(self):
 		return self._sizeMax
+
+	def split(self):
+		hullList = []
+		for path in self.paths:
+			hullList.append(polygon.convexHull(map(lambda n: [n[0].real, n[0].imag], path.getPoints(1.0))))
+		drawingList = []
+		for n in xrange(0, len(hullList)):
+			if hullList[n] is None:
+				continue
+			drawing = Drawing()
+			drawing.paths.append(self.paths[n])
+			for m in xrange(n + 1, len(hullList)):
+				if hullList[m] is not None and polygon.polygonCollision(hullList[n], hullList[m]):
+					hullList[m] = None
+					drawing.paths.append(self.paths[m])
+			hullList[n] = None
+			drawing._postProcessPaths()
+			drawingList.append(drawing)
+		return drawingList
 
 	def dumpToFile(self, file):
 		file.write("%d\n" % (len(self.paths)))

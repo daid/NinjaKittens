@@ -86,12 +86,22 @@ class Engine(object):
 
 		sendList = []
 		for obj in scene.getObjectList():
-			sendList.append("%i\n" % (len(obj.paths)))
-			for path in obj.paths:
-				points = path.getPoints()
+			cutPaths = filter(lambda p: p.isClosed() and p.type == 'cut', obj.paths)
+			sendList.append("%i\n" % (len(cutPaths)))
+			for path in cutPaths:
+				points = path.getPoints(profile.getProfileSettingFloat('drill_diameter') * 0.1)
 				sendList.append("%i\n" % (len(points)))
 				for p in points:
 					sendList.append("%i %i\n" % ((p[0].real + obj._position.real) * 1000, (p[0].imag + obj._position.imag) * 1000))
+
+			engravePaths = filter(lambda p: p.isClosed() and p.type == 'engrave', obj.paths)
+			sendList.append("%i\n" % (len(engravePaths)))
+			for path in engravePaths:
+				points = path.getPoints(profile.getProfileSettingFloat('drill_diameter') * 0.1)
+				sendList.append("%i\n" % (len(points)))
+				for p in points:
+					sendList.append("%i %i\n" % ((p[0].real + obj._position.real) * 1000, (p[0].imag + obj._position.imag) * 1000))
+
 			commandList += ['-r']
 		commandList += ['-p']
 		self._thread = threading.Thread(target=self._watchProcess, args=(commandList, sendList, self._thread))
@@ -132,10 +142,11 @@ class Engine(object):
 			self.resultPoints = []
 			p = [0.0, 0.0, 0.0]
 			for line in self._sliceLog:
-				print line
-				p[0] = getCodeFloat(line, 'X', p[0])
-				p[1] = getCodeFloat(line, 'Y', p[1])
-				p[2] = getCodeFloat(line, 'Z', p[2])
+				g = getCodeInt(line, 'G', None)
+				if g == 0 or g == 1:
+					p[0] = getCodeFloat(line, 'X', p[0])
+					p[1] = getCodeFloat(line, 'Y', p[1])
+					p[2] = getCodeFloat(line, 'Z', p[2])
 				self.resultPoints.append(p[:])
 			self._callback(1.0, True)
 		else:
@@ -156,6 +167,7 @@ class Engine(object):
 			'travelHeight': int(profile.getProfileSettingFloat('travel_height') * 1000),
 			'cutDepth': int(profile.getProfileSettingFloat('cut_depth') * 1000),
 			'cutDepthStep': int(profile.getProfileSettingFloat('cut_depth_step') * 1000),
+			'engraveDepth': int(profile.getProfileSettingFloat('engrave_depth') * 1000),
 
 			'startCode': profile.getAlterationFileContents('start.gcode'),
 			'endCode': profile.getAlterationFileContents('end.gcode'),

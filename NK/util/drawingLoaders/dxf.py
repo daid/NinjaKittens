@@ -69,6 +69,11 @@ class DXF(drawing.Drawing):
 			for n in xrange(1, len(obj[10])):
 				p.addLineTo(float(obj[10][n]), float(obj[20][n]))
 			self._lastLine = p
+		elif type == 'SPLINE':
+			p = self.addPath(float(obj[10][0]), float(obj[20][0]))
+			for n in xrange(1, len(obj[10])):
+				p.addLineTo(float(obj[10][n]), float(obj[20][n]))
+			self._lastLine = p
 		else:
 			print 'type=%s' % type
 			for k in obj.keys():

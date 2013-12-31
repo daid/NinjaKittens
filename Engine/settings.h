@@ -1,7 +1,7 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
-#include <utils/floatpoint.h>
+#include "utils/floatpoint.h"
 #include <vector>
 
 #define VERSION "0.0"
@@ -26,6 +26,7 @@ public:
     int travelFeedrate;
     int cutDepth;
     int cutDepthStep;
+    int engraveDepth;
     
     const char* startCode;
     const char* endCode;
