@@ -1,19 +1,19 @@
 __copyright__ = "Copyright (C) 2013 David Braam - Released under terms of the AGPLv3 License"
 
 from NK.util import engine
-from NK.util import util3d
 
 class Scene(object):
 	def __init__(self):
 		self._objectList = []
 		self.engine = engine.Engine(self._engineCallback)
 
-	def addObject(self, obj):
-		self._objectList.append(obj)
-		obj._position = -(obj.getMin()) + complex(5, 5)
-		for p in obj.paths:
-			p.type = 'cut'
-		util3d
+	def addObject(self, objInput):
+		objInput._position = -(objInput.getMin()) + complex(5, 5)
+		for obj in objInput.split():
+			self._objectList.append(obj)
+			obj._position = objInput._position
+			for p in obj.paths:
+				p.type = 'cut'
 		self.update()
 
 	def getObjectList(self):
@@ -51,4 +51,5 @@ class Scene(object):
 		self.engine.runSlicer(self)
 
 	def _engineCallback(self, process, ready):
-		print process, ready
+		pass
+		#print process, ready

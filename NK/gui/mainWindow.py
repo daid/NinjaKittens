@@ -388,9 +388,6 @@ class mainWindow(wx.Frame):
 			profile.putPreference('window_height', height)
 
 			# Save normal sash position.  If in normal mode (!simple mode), get last position of sash before saving it...
-			isSimple = profile.getPreference('startMode') == 'Simple'
-			if not isSimple:
-				self.normalSashPos = self.splitter.GetSashPosition()
 			profile.putPreference('window_normal_sash', self.normalSashPos)
 
 		#HACK: Set the paint function of the glCanvas to nothing so it won't keep refreshing. Which can keep wxWidgets from quiting.

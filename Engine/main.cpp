@@ -49,6 +49,45 @@ public:
     }
 };
 
+class PartOrderOptimizer
+{
+    vector<Polygons>& parts;
+    vector<int> order;
+public:
+    
+    PartOrderOptimizer(Point startPoint, vector<Polygons>& parts)
+    : parts(parts)
+    {
+        vector<bool> picked;
+        vector<Point> center;
+        for(unsigned int n=0; n<parts.size(); n++)
+        {
+            center.push_back(parts[n].centerOfMass(0));
+            picked.push_back(false);
+        }
+        
+        Point p0 = startPoint;
+        for(unsigned int cnt=0; cnt<parts.size(); cnt++)
+        {
+            int best = -1;
+            for(unsigned int n=0; n<parts.size(); n++)
+            {
+                if (picked[n]) continue;
+                if (best == -1 || vSize2f(center[n] - p0) < vSize2f(center[best] - p0))
+                    best = n;
+            }
+            picked[best] = true;
+            order.push_back(best);
+            p0 = center[best];
+        }
+    }
+    
+    int operator[] (int idx)
+    {
+        return order[idx];
+    }
+};
+
 class CuttingProcessor
 {
 public:
@@ -63,27 +102,23 @@ public:
     
     void process()
     {
-        Polygons paths;
-        vector<Polygons> parts;
-        
-        paths = drawing.engravePolygons.offset(-config.cutPathOffset);
-        parts = paths.splitIntoParts();
-        for(unsigned int n=0; n<parts.size(); n++)
         {
-            processPart(parts[n], config.engraveDepth);
+            Polygons paths = drawing.engravePolygons.offset(-config.cutPathOffset);
+            vector<Polygons> parts = paths.splitIntoParts();
+            PartOrderOptimizer order(gcode.getPositionXY(), parts);
+            for(unsigned int n=0; n<parts.size(); n++)
+            {
+                processPart(parts[order[n]], config.engraveDepth);
+            }
         }
 
-        paths = drawing.engravePolygons.offset(-config.cutPathOffset * 2);
-        parts = paths.splitIntoParts();
-        for(unsigned int n=0; n<parts.size(); n++)
         {
-            processPart(parts[n], config.engraveDepth);
+            Polygons paths = drawing.cutPolygons.offset(config.cutPathOffset);
+            vector<Polygons> parts = paths.splitIntoParts();
+            PartOrderOptimizer order(gcode.getPositionXY(), parts);
+            for(unsigned int n=0; n<parts.size(); n++)
+                processPart(parts[order[n]], config.cutDepth);
         }
-
-        paths = drawing.cutPolygons.offset(config.cutPathOffset);
-        parts = paths.splitIntoParts();
-        for(unsigned int n=0; n<parts.size(); n++)
-            processPart(parts[n], config.cutDepth);
     }
     
     void processPart(Polygons paths, int totalDepth)

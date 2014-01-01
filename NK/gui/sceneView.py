@@ -28,6 +28,7 @@ class SceneView(openglGui.glGuiPanel):
 		self._selectedPath = None
 		self._mouseX = 0
 		self._mouseY = 0
+		self._mouseState = ''
 
 		self._loadButton = openglGui.glButton(self, 4, _("Load"), (0, 0), self.ShowLoadDialog)
 		self._pathCutButton = openglGui.glButton(self, 0, _("Cut"), (0, -1), self.OnCutButton)
@@ -42,6 +43,7 @@ class SceneView(openglGui.glGuiPanel):
 		self.updateProfileToControls()
 		self._viewTarget[0] = self._machineSize[0] / 2.0
 		self._viewTarget[1] = self._machineSize[1] / 2.0
+		self._zoom = numpy.max(self._machineSize) * 1.5
 
 	def sceneUpdated(self):
 		self._scene.update()
@@ -61,13 +63,12 @@ class SceneView(openglGui.glGuiPanel):
 
 	def loadFiles(self, filenames):
 		for filename in filenames:
-			for drawingLoaded in drawingLoader.loadDrawings(filename):
-				for drawing in drawingLoaded.split():
-					self._scene.addObject(drawing)
-					p = drawing._position + (drawing.getMin() + drawing.getMax()) / 2.0
-					self._viewTarget[0] = p.real
-					self._viewTarget[1] = p.imag
-					self._zoom = abs(drawing.getMax() - drawing.getMin()) * 1.5
+			for drawing in drawingLoader.loadDrawings(filename):
+				self._scene.addObject(drawing)
+				p = drawing._position + (drawing.getMin() + drawing.getMax()) / 2.0
+				self._viewTarget[0] = p.real
+				self._viewTarget[1] = p.imag
+				self._zoom = abs(drawing.getMax() - drawing.getMin()) * 1.5
 		self._queueRefresh()
 
 	def OnCutButton(self, button):
@@ -140,9 +141,15 @@ class SceneView(openglGui.glGuiPanel):
 			self._selectedObject, self._selectedPath = self._scene.getObjectAt(complex(cursorZ0[0], cursorZ0[1]))
 		if self._mouseState == 'dragObject':
 			self.sceneUpdated()
-		if self._pitch < 15 and -15 < self._yaw < 15:
-			self._pitch = 0
-			self._yaw = 0
+		if self._yaw > 180:
+			self._yaw -= 360
+		if self._yaw < -180:
+			self._yaw += 360
+		if self._pitch < 10:
+			for n in [-180, -90, 0, 90, 180]:
+				if -10 + n < self._yaw < 10 + n:
+					self._pitch = 0
+					self._yaw = n
 		self._mouseState = ''
 		self._queueRefresh()
 
@@ -176,13 +183,20 @@ class SceneView(openglGui.glGuiPanel):
 		glMatrixMode(GL_PROJECTION)
 		glLoadIdentity()
 		aspect = float(size.GetWidth()) / float(size.GetHeight())
-		gluPerspective(45.0, aspect, 1.0, numpy.max(self._machineSize) * 4)
+		if self._pitch == 0:
+			f = 534.0 / 646.0
+			h = self._zoom * aspect / 2.0 * f
+			v = self._zoom / 2.0 * f
+			glOrtho(-h, h, -v, v, -numpy.max(self._machineSize) * 4, numpy.max(self._machineSize) * 4)
+		else:
+			gluPerspective(45.0, aspect, 1.0, numpy.max(self._machineSize) * 4)
 
 		glMatrixMode(GL_MODELVIEW)
 		glLoadIdentity()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
 
-		glTranslate(0,0,-self._zoom)
+		if self._pitch != 0:
+			glTranslate(0,0,-self._zoom)
 		glRotate(-self._pitch, 1,0,0)
 		glRotate(self._yaw, 0,0,1)
 		glTranslate(-self._viewTarget[0],-self._viewTarget[1],-self._viewTarget[2])
@@ -213,7 +227,7 @@ class SceneView(openglGui.glGuiPanel):
 
 			glPopMatrix()
 
-		if self._mouseX > -1:
+		if self._mouseX > -1 and self._mouseState != 'dragObject':
 			glFlush()
 			n = glReadPixels(self._mouseX, self.GetSize().GetHeight() - 1 - self._mouseY, 1, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8)[0][0] >> 8
 			if n < len(self._scene.getObjectList()):
@@ -268,7 +282,7 @@ class SceneView(openglGui.glGuiPanel):
 			glTranslatef(self._selectedObject._position.real, self._selectedObject._position.imag, 0)
 
 			glDisable(GL_DEPTH_TEST)
-			glLineWidth(2.0)
+			glLineWidth(4.0)
 			glColor3f(0, 0, 0)
 			glBegin(GL_LINE_STRIP)
 			for p in self._selectedPath.getPoints(1.0):
@@ -278,9 +292,13 @@ class SceneView(openglGui.glGuiPanel):
 			glEnable(GL_DEPTH_TEST)
 			glPopMatrix()
 
-		glColor3f(1,0,1)
+		glEnable(GL_BLEND)
 		glBegin(GL_LINE_STRIP)
 		for p in self._scene.engine.resultPoints:
+			if p[2] > 0:
+				glColor4f(1,0,1, 0.2)
+			else:
+				glColor3f(1,0,1)
 			glVertex3f(p[0], p[1], p[2])
 		glEnd()
 
@@ -326,7 +344,10 @@ class SceneView(openglGui.glGuiPanel):
 			[s[0], 0],
 			[s[0], s[1]],
 		]
+		textureScale = 20
+		if numpy.max(s) >= 1000:
+			textureScale = 200
 		for p in verts:
-			glTexCoord2f(p[0]/20, p[1]/20)
+			glTexCoord2f(p[0]/textureScale, p[1]/textureScale)
 			glVertex3f(p[0], p[1], 0)
 		glEnd()
