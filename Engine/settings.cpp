@@ -14,7 +14,12 @@ ConfigSettings::ConfigSettings()
     SETTING(travelFeedrate, 150 * 60);
     SETTING(cutDepth, 5000);
     SETTING(cutDepthStep, 1000);
+    SETTING(engravePathOffset, 2000);
     SETTING(engraveDepth, 1000);
+    SETTING(tabWidth, 5000);
+    SETTING(tabDepth, 4000);
+    SETTING(minTabDistance, 50000);
+    SETTING(maxTabDistance, 150000);
 }
 
 #undef STRINGIFY

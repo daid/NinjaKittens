@@ -34,6 +34,7 @@ class Path(object):
 		self._startPoint = self._m(complex(x, y))
 		self._nodes = []
 		self._isClosed = False
+		self.color = 0x000000
 
 	def addLineTo(self, x, y):
 		self._nodes.append(LineNode(self._m(complex(x, y))))
@@ -253,10 +254,15 @@ class Drawing(object):
 				continue
 			drawing = Drawing()
 			drawing.paths.append(self.paths[n])
-			for m in xrange(n + 1, len(hullList)):
-				if hullList[m] is not None and polygon.polygonCollision(hullList[n], hullList[m]):
-					hullList[m] = None
-					drawing.paths.append(self.paths[m])
+			retry = True
+			while retry:
+				retry = False
+				for m in xrange(n + 1, len(hullList)):
+					if hullList[m] is not None and polygon.polygonCollision(hullList[n], hullList[m]):
+						hullList[n] = polygon.convexHull(numpy.concatenate((hullList[n], hullList[m])))
+						hullList[m] = None
+						drawing.paths.append(self.paths[m])
+						retry = True
 			hullList[n] = None
 			drawing._postProcessPaths()
 			drawingList.append(drawing)

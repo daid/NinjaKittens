@@ -31,12 +31,14 @@ class SceneView(openglGui.glGuiPanel):
 		self._mouseState = ''
 
 		self._loadButton = openglGui.glButton(self, 4, _("Load"), (0, 0), self.ShowLoadDialog)
-		self._pathCutButton = openglGui.glButton(self, 0, _("Cut"), (0, -1), self.OnCutButton)
-		self._pathEngraveButton = openglGui.glButton(self, 0, _("Engrave"), (1, -1), self.OnEngraveButton)
+		self._saveButton = openglGui.glButton(self, 3, _("Save"), (1, 0), self.ShowSaveDialog)
+		self._pathCutButton = openglGui.glButton(self, 0, _("Cut"), (0, -1), lambda button: self.SetSelectedPathType('cut'))
+		self._pathEngraveButton = openglGui.glButton(self, 0, _("Engrave"), (1, -1), lambda button: self.SetSelectedPathType('engrave'))
+		self._pathIgnoreButton = openglGui.glButton(self, 0, _("Ignore"), (3, -1), lambda button: self.SetSelectedPathType('ignore'))
 
 		self._notification = openglGui.glNotification(self, (0, 0))
 
-		self._scene = objectScene.Scene()
+		self._scene = objectScene.Scene(self.QueueRefresh)
 
 		self.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheel)
 
@@ -61,6 +63,22 @@ class SceneView(openglGui.glGuiPanel):
 		profile.putPreference('lastFile', filenames[0])
 		self.loadFiles(filenames)
 
+	def ShowSaveDialog(self, button):
+		if len(self._scene.engine._gcode) < 1:
+			return
+		dlg=wx.FileDialog(self, _("Save GCode"), os.path.split(profile.getPreference('lastFile'))[0], style=wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
+		dlg.SetWildcard("GCode (*.gcode)|*.gcode|*.g|*.G")
+		if dlg.ShowModal() != wx.ID_OK:
+			dlg.Destroy()
+			return
+		filename = dlg.GetPath()
+		dlg.Destroy()
+		f = open(filename, "w")
+		for line in self._scene.engine._gcode:
+			f.write(line)
+			f.write('\n')
+		f.close()
+
 	def loadFiles(self, filenames):
 		for filename in filenames:
 			for drawing in drawingLoader.loadDrawings(filename):
@@ -71,16 +89,10 @@ class SceneView(openglGui.glGuiPanel):
 				self._zoom = abs(drawing.getMax() - drawing.getMin()) * 1.5
 		self._queueRefresh()
 
-	def OnCutButton(self, button):
+	def SetSelectedPathType(self, type):
 		if self._selectedPath is None:
 			return
-		self._selectedPath.type = 'cut'
-		self.sceneUpdated()
-
-	def OnEngraveButton(self, button):
-		if self._selectedPath is None:
-			return
-		self._selectedPath.type = 'engrave'
+		self._selectedPath.type = type
 		self.sceneUpdated()
 
 	def updateProfileToControls(self):
@@ -105,8 +117,7 @@ class SceneView(openglGui.glGuiPanel):
 			self._mouseState = 'dragOrClick'
 
 	def OnMouseMotion(self,e):
-		if e.Dragging():
-			self._mouseState = 'drag'
+		if e.Dragging() and self._mouseState.startswith('drag'):
 			if e.LeftIsDown() and not e.RightIsDown():
 				p0, p1 = self.getMouseRay(self._mouseX, self._mouseY)
 				cursorZ0 = p0 - (p1 - p0) * (p0[2] / (p1[2] - p0[2]))
@@ -116,7 +127,11 @@ class SceneView(openglGui.glGuiPanel):
 					self._viewTarget += cursorZ0 - cursorZ1
 				else:
 					self._focusObj._position += complex(cursorZ1[0] - cursorZ0[0], cursorZ1[1] - cursorZ0[1])
+					self._selectedObject = self._focusObj
+					self._selectedPath = None
 					self._mouseState = 'dragObject'
+					if self._scene.isUpdateDone():
+						self._scene.update()
 			elif not e.LeftIsDown() and e.RightIsDown():
 				self._yaw += e.GetX() - self._mouseX
 				self._pitch -= e.GetY() - self._mouseY
@@ -135,7 +150,7 @@ class SceneView(openglGui.glGuiPanel):
 		self._mouseY = e.GetY()
 
 	def OnMouseUp(self,e):
-		if self._mouseState == 'dragOrClick':
+		if self._mouseState == 'dragOrClick' and e.Button == 1:
 			p0, p1 = self.getMouseRay(e.GetX(), e.GetY())
 			cursorZ0 = p0 - (p1 - p0) * (p0[2] / (p1[2] - p0[2]))
 			self._selectedObject, self._selectedPath = self._scene.getObjectAt(complex(cursorZ0[0], cursorZ0[1]))
@@ -152,6 +167,18 @@ class SceneView(openglGui.glGuiPanel):
 					self._yaw = n
 		self._mouseState = ''
 		self._queueRefresh()
+
+	def OnKeyChar(self, keyCode):
+		if keyCode == wx.WXK_DELETE or keyCode == wx.WXK_NUMPAD_DELETE or (keyCode == wx.WXK_BACK and platform.system() == "Darwin"):
+			if self._selectedObject is not None:
+				self._deleteObject(self._selectedObject)
+
+	def _deleteObject(self, obj):
+		if obj == self._selectedObject:
+			self._selectedObject = None
+		if obj == self._focusObj:
+			self._focusObj = None
+		self._scene.remove(obj)
 
 	def getMouseRay(self, x, y):
 		if self._viewport is None:
@@ -173,7 +200,7 @@ class SceneView(openglGui.glGuiPanel):
 		glDisable(GL_LIGHT0)
 		glEnable(GL_DEPTH_TEST)
 		glDisable(GL_CULL_FACE)
-		glDisable(GL_BLEND)
+		glEnable(GL_BLEND)
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 		glClearColor(0.8, 0.8, 0.8, 1.0)
@@ -255,7 +282,12 @@ class SceneView(openglGui.glGuiPanel):
 		for obj in self._scene.getObjectList():
 			glPushMatrix()
 			glTranslatef(obj._position.real, obj._position.imag, 0)
-			glColor3f(0.9, 0.9, 0.9)
+			if obj == self._focusObj:
+				glColor3f(1.0, 0.9, 0.9)
+			elif obj == self._selectedObject:
+				glColor3f(0.9, 0.9, 1.0)
+			else:
+				glColor3f(0.9, 0.9, 0.9)
 			self._drawEvenOddPaths(filter(lambda p: p.isClosed() and p.type == 'cut', obj.paths), obj)
 
 			glColor3f(0.7, 0.7, 1.0)
@@ -266,7 +298,9 @@ class SceneView(openglGui.glGuiPanel):
 			glPushMatrix()
 			glTranslatef(obj._position.real, obj._position.imag, 0)
 			for path in obj.paths:
-				if path.isClosed():
+				if path.type == 'ignore':
+					glColor4f(0,0,0,0.3)
+				elif path.isClosed():
 					glColor3f(0,0,0)
 				else:
 					glColor3f(1,0,0)
@@ -292,7 +326,6 @@ class SceneView(openglGui.glGuiPanel):
 			glEnable(GL_DEPTH_TEST)
 			glPopMatrix()
 
-		glEnable(GL_BLEND)
 		glBegin(GL_LINE_STRIP)
 		for p in self._scene.engine.resultPoints:
 			if p[2] > 0:

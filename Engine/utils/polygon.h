@@ -2,10 +2,123 @@
 #define UTILS_POLYGON_H
 
 #include <vector>
+#include <assert.h>
 using std::vector;
 #include "clipper/clipper.hpp"
 
 #include "utils/intpoint.h"
+
+//#define CHECK_POLY_ACCESS
+#ifdef CHECK_POLY_ACCESS
+#define POLY_ASSERT(e) assert(e)
+#else
+#define POLY_ASSERT(e) do {} while(0)
+#endif
+
+class PolygonRef
+{
+    ClipperLib::Path* polygon;
+    PolygonRef()
+    : polygon(NULL)
+    {}
+public:
+    PolygonRef(ClipperLib::Path& polygon)
+    : polygon(&polygon)
+    {}
+    
+    unsigned int size() const
+    {
+        return polygon->size();
+    }
+    
+    Point operator[] (unsigned int index) const
+    {
+        POLY_ASSERT(index < size());
+        return (*polygon)[index];
+    }
+    
+    void add(const Point p)
+    {
+        polygon->push_back(p);
+    }
+
+    void remove(unsigned int index)
+    {
+        POLY_ASSERT(index < size());
+        polygon->erase(polygon->begin() + index);
+    }
+    
+    void clear()
+    {
+        polygon->clear();
+    }
+
+    bool orientation() const
+    {
+        return ClipperLib::Orientation(*polygon);
+    }
+    
+    void reverse()
+    {
+        ClipperLib::ReversePath(*polygon);
+    }
+
+    int64_t polygonLength() const
+    {
+        int64_t length = 0;
+        Point p0 = (*polygon)[polygon->size()-1];
+        for(unsigned int n=0; n<polygon->size(); n++)
+        {
+            Point p1 = (*polygon)[n];
+            length += vSize(p0 - p1);
+            p0 = p1;
+        }
+        return length;
+    }
+    
+    double area() const
+    {
+        return ClipperLib::Area(*polygon);
+    }
+
+    Point centerOfMass() const
+    {
+        double x = 0, y = 0;
+        Point p0 = (*polygon)[polygon->size()-1];
+        for(unsigned int n=0; n<polygon->size(); n++)
+        {
+            Point p1 = (*polygon)[n];
+            double second_factor = (p0.X * p1.Y) - (p1.X * p0.Y);
+            
+            x += double(p0.X + p1.X) * second_factor;
+            y += double(p0.Y + p1.Y) * second_factor;
+            p0 = p1;
+        }
+
+        double area = Area(*polygon);
+        x = x / 6 / area;
+        y = y / 6 / area;
+
+        if (x < 0)
+        {
+            x = -x;
+            y = -y;
+        }
+        return Point(x, y);
+    }
+    
+    friend class Polygons;
+};
+
+class Polygon : public PolygonRef
+{
+    ClipperLib::Path poly;
+public:
+    Polygon()
+    : PolygonRef(poly)
+    {
+    }
+};
 
 class Polygons
 {
@@ -17,26 +130,33 @@ public:
         return polygons.size();
     }
     
-    ClipperLib::Path& operator[] (int index) //__attribute__((__deprecated__))
+    PolygonRef operator[] (unsigned int index)
     {
-        return polygons[index];
+        POLY_ASSERT(index < size());
+        return PolygonRef(polygons[index]);
     }
-    void remove(int index)
+    void remove(unsigned int index)
     {
+        POLY_ASSERT(index < size());
         polygons.erase(polygons.begin() + index);
     }
     void clear()
     {
         polygons.clear();
     }
-    void add(const ClipperLib::Path& poly)
+    void add(const PolygonRef& poly)
     {
-        polygons.push_back(poly);
+        polygons.push_back(*poly.polygon);
     }
     void add(const Polygons& other)
     {
         for(unsigned int n=0; n<other.polygons.size(); n++)
             polygons.push_back(other.polygons[n]);
+    }
+    PolygonRef newPoly()
+    {
+        polygons.push_back(ClipperLib::Path());
+        return PolygonRef(polygons[polygons.size()-1]);
     }
     
     Polygons() {}
@@ -92,50 +212,6 @@ public:
         _processPolyTreeNode(&resultPolyTree, ret);
         return ret;
     }
-    Polygons processEvenOdd() const
-    {
-        Polygons ret;
-        ClipperLib::Clipper clipper;
-        clipper.AddPaths(polygons, ClipperLib::ptSubject, true);
-        clipper.Execute(ClipperLib::ctUnion, ret.polygons);
-        return ret;
-    }
-    
-    bool orientation(int n)
-    {
-        return ClipperLib::Orientation(polygons[n]);
-    }
-
-    double area(int n)
-    {
-        return ClipperLib::Area(polygons[n]);
-    }
-    
-    Point centerOfMass(int idx)
-    {
-        double x = 0, y = 0;
-        Point p0 = polygons[idx][polygons[idx].size()-1];
-        for(unsigned int n=0; n<polygons[idx].size(); n++)
-        {
-            Point p1 = polygons[idx][n];
-            double second_factor = (p0.X * p1.Y) - (p1.X * p0.Y);
-            
-            x += double(p0.X + p1.X) * second_factor;
-            y += double(p0.Y + p1.Y) * second_factor;
-            p0 = p1;
-        }
-
-        double a = area(idx);
-        x = x / 6 / a;
-        y = y / 6 / a;
-
-        if (x < 0)
-        {
-            x = -x;
-            y = -y;
-        }
-        return Point(x, y);
-    }
 private:
     void _processPolyTreeNode(ClipperLib::PolyNode* node, vector<Polygons>& ret) const
     {
@@ -153,6 +229,15 @@ private:
         }
     }
 public:
+    Polygons processEvenOdd() const
+    {
+        Polygons ret;
+        ClipperLib::Clipper clipper;
+        clipper.AddPaths(polygons, ClipperLib::ptSubject, true);
+        clipper.Execute(ClipperLib::ctUnion, ret.polygons);
+        return ret;
+    }
+    
     int64_t polygonLength() const
     {
         int64_t length = 0;

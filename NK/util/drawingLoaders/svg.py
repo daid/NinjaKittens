@@ -5,6 +5,7 @@ import math
 import re
 import sys
 import numpy
+import types
 from xml.etree import ElementTree
 
 from NK.util.drawingLoaders import drawing
@@ -95,6 +96,7 @@ class SVG(drawing.Drawing):
 		self._xml = ElementTree.parse(f)
 		self._recursiveCount = 0
 		matrix = numpy.matrix(numpy.identity(3, numpy.float64))
+		matrix = applyTransformString(matrix, "scale(1, -1)")
 		matrix = applyTransformString(matrix, "scale(%f)" % (25.4/90.0)) #Per default convert with 90 dpi
 		self._processGTag(self._xml.getroot(), matrix)
 		self._xml = None
@@ -138,17 +140,20 @@ class SVG(drawing.Drawing):
 		x2 = toFloat(tag.get('x2', '0'))
 		y2 = toFloat(tag.get('y2', '0'))
 		p = self.addPath(x1, y1, matrix)
+		self._processColorForTag(tag, p)
 		p.addLineTo(x2, y2)
 
 	def _processPolylineTag(self, tag, matrix):
 		values = map(toFloat, re.split('[, \t]+', tag.get('points', '').strip()))
 		p = self.addPath(values[0], values[1], matrix)
+		self._processColorForTag(tag, p)
 		for n in xrange(2, len(values)-1, 2):
 			p.addLineTo(values[n], values[n+1])
 
 	def _processPolygonTag(self, tag, matrix):
 		values = map(toFloat, re.split('[, \t]+', tag.get('points', '').strip()))
 		p = self.addPath(values[0], values[1], matrix)
+		self._processColorForTag(tag, p)
 		for n in xrange(2, len(values)-1, 2):
 			p.addLineTo(values[n], values[n+1])
 		p.closePath()
@@ -158,6 +163,7 @@ class SVG(drawing.Drawing):
 		cy = toFloat(tag.get('cy', '0'))
 		r = toFloat(tag.get('r', '0'))
 		p = self.addPath(cx-r, cy, matrix)
+		self._processColorForTag(tag, p)
 		p.addArcTo(cx+r, cy, 0, r, r, False, False)
 		p.addArcTo(cx-r, cy, 0, r, r, False, False)
 
@@ -167,6 +173,7 @@ class SVG(drawing.Drawing):
 		rx = toFloat(tag.get('rx', '0'))
 		ry = toFloat(tag.get('rx', '0'))
 		p = self.addPath(cx-rx, cy, matrix)
+		self._processColorForTag(tag, p)
 		p.addArcTo(cx+rx, cy, 0, rx, ry, False, False)
 		p.addArcTo(cx-rx, cy, 0, rx, ry, False, False)
 
@@ -196,6 +203,7 @@ class SVG(drawing.Drawing):
 
 		if rx > 0 and ry > 0:
 			p = self.addPath(x+width-rx, y, matrix)
+			self._processColorForTag(tag, p)
 			p.addArcTo(x+width,y+ry, 0, rx, ry, False, True)
 			p.addLineTo(x+width, y+height-ry)
 			p.addArcTo(x+width-rx,y+height, 0, rx, ry, False, True)
@@ -206,6 +214,7 @@ class SVG(drawing.Drawing):
 			p.closePath()
 		else:
 			p = self.addPath(x, y, matrix)
+			self._processColorForTag(tag, p)
 			p.addLineTo(x,y+height)
 			p.addLineTo(x+width,y+height)
 			p.addLineTo(x+width,y)
@@ -231,6 +240,7 @@ class SVG(drawing.Drawing):
 				x += params[0]
 				y += params[1]
 				path = self.addPath(x, y, matrix)
+				self._processColorForTag(tag, path)
 				params = params[2:]
 				while len(params) > 1:
 					x += params[0]
@@ -242,6 +252,7 @@ class SVG(drawing.Drawing):
 				x = params[0]
 				y = params[1]
 				path = self.addPath(x, y, matrix)
+				self._processColorForTag(tag, path)
 				params = params[2:]
 				while len(params) > 1:
 					x = params[0]
@@ -379,6 +390,28 @@ class SVG(drawing.Drawing):
 				y = path._startPoint.imag
 			else:
 				print 'Unknown path command:', command, params
+
+	def _processColorForTag(self, tag, path):
+		color = tag.get('stroke', None)
+		if color is not None:
+			color = color.strip()
+		else:
+			style = tag.get('style', None)
+			if style is not None:
+				for s in style.split(';'):
+					e = s.split(':')
+					if len(e) == 2:
+						if e[0].strip() == 'stroke':
+							color = e[1].strip()
+		if color is None:
+			color = 0x000000
+		elif type(color) in types.StringTypes:
+			if color[0] == '#':
+				color = int(color[1:], 16)
+			else:
+				print "Unknown color: %s" % (color)
+				color = 0x000000
+		path.color = color
 
 
 if __name__ == '__main__':

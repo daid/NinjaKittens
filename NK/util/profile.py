@@ -63,7 +63,8 @@ class setting(object):
 
 	def setRange(self, minValue=None, maxValue=None):
 		if len(self._validators) < 1:
-			return
+			print "Warning: No range validator for: %s" % (self.getName())
+			return self
 		self._validators[0].minValue = minValue
 		self._validators[0].maxValue = maxValue
 		return self
@@ -152,12 +153,20 @@ def _(n):
 	return n
 
 setting('cut_depth',                 5.0, float, 'basic',    _('Quality')).setRange(0.01).setLabel(_("Cut depth (mm)"), _(""))
-setting('engrave_depth',             1.0, float, 'basic',    _('Quality')).setRange(0.01).setLabel(_("Engrave depth (mm)"), _(""))
 setting('drill_diameter',            4.0, float, 'basic',    _('Quality')).setRange(0.0001).setLabel(_("Drill diameter (mm)"), _(""))
 setting('cutting_feedrate',           10, float, 'basic',    _('Speed')).setRange(1).setLabel(_("Cutting speed (mm/s)"), _(""))
 setting('cut_depth_step',            1.0, float, 'advanced', _('Quality')).setRange(1).setLabel(_("Cut depth step (mm)"), _(""))
 setting('travel_height',             5.0, float, 'advanced', _('Quality')).setRange(0.1).setLabel(_("Travel height (mm)"), _(""))
 setting('travel_speed',             50.0, float, 'advanced', _('Speed')).setRange(0.1).setLabel(_("Travel speed (mm/s)"), _("Speed at which travel moves are done."))
+
+setting('engrave_depth',             1.0, float, 'basic',    _('Engrave')).setRange(0.01).setLabel(_("Engrave depth (mm)"), _(""))
+setting('engrave_position',     'Inside', [_('Inside'), _('Outside'), _('Center')], 'basic',    _('Engrave')).setLabel(_("Engrave position"), _(""))
+
+setting('tabs_enable',              True, bool,  'basic',    _('Holding tabs')).setLabel(_("Enable tabs"), _(""))
+setting('tab_height',                1.0, float, 'advanced', _('Holding tabs')).setLabel(_("Tab depth"), _("Height of the holding tabs"))
+setting('tab_width',                 5.0, float, 'advanced', _('Holding tabs')).setLabel(_("Tab width"), _("Width of each holding tab"))
+setting('tab_min_distance',         50.0, float, 'advanced', _('Holding tabs')).setLabel(_("Minimal distance"), _("Minimal distance between each holding tab.\nThe tabs are placed somewhere between the minimal and maximal distance apart. While trying to avoid placing tabs on corners."))
+setting('tab_max_distance',        150.0, float, 'advanced', _('Holding tabs')).setLabel(_("Maximal distance"), _("Maximal distance between each holding tab.\nThe tabs are placed somewhere between the minimal and maximal distance apart. While trying to avoid placing tabs on corners."))
 
 setting('plugin_config', '', str, 'hidden', 'hidden')
 
@@ -167,6 +176,7 @@ G90 ; Absolute positioning
 """, str, 'alteration', 'alteration')
 #######################################################################################
 setting('end.gcode', """;End GCode
+;{profile_string}
 """, str, 'alteration', 'alteration')
 #######################################################################################
 
@@ -698,6 +708,8 @@ def replaceTagMatch(m):
 		return pre + '#F_WGHT#'
 	if tag == 'filament_cost':
 		return pre + '#F_COST#'
+	if tag == 'profile_string':
+		return pre + 'NINJA_PROFILE_STRING:%s' % (getProfileString())
 	if pre == 'F' and tag == 'max_z_speed':
 		f = getProfileSettingFloat('travel_speed') * 60
 	if pre == 'F' and tag in ['print_speed', 'retraction_speed', 'travel_speed', 'bottom_layer_speed', 'cool_min_feedrate']:
@@ -767,9 +779,6 @@ def getAlterationFileContents(filename):
 	prefix = ''
 	postfix = ''
 	alterationContents = getAlterationFile(filename)
-	if filename == 'end.gcode':
-		#Append the profile string to the end of the GCode, so we can load it from the GCode file later.
-		postfix = ';NINJA_PROFILE_STRING:%s\n' % (getProfileString())
 	return unicode(prefix + re.sub("(.)\{([^\}]*)\}", replaceTagMatch, alterationContents).rstrip() + '\n' + postfix).strip().encode('utf-8') + '\n'
 
 ###### PLUGIN #####

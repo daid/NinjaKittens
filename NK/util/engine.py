@@ -50,6 +50,7 @@ class Engine(object):
 		self._thread = None
 		self._callback = progressCallback
 		self._objCount = 0
+		self._gcode = []
 		self._sliceLog = []
 		self._id = 0
 		self.resultPoints = []
@@ -78,6 +79,9 @@ class Engine(object):
 
 	def runSlicer(self, scene):
 		if len(scene.getObjectList()) < 1:
+			self._gcode = []
+			self.resultPoints = []
+			self._callback(1.0, False)
 			return
 
 		commandList = [getEngineFilename(), '-vv']
@@ -111,7 +115,10 @@ class Engine(object):
 	def _watchProcess(self, commandList, sendList, oldThread):
 		if oldThread is not None:
 			if self._process is not None:
-				self._process.terminate()
+				try:
+					self._process.terminate()
+				except:
+					pass
 			oldThread.join()
 		self._id += 1
 		self._callback(-1.0, False)
@@ -123,6 +130,7 @@ class Engine(object):
 		if self._thread != threading.currentThread():
 			self._process.terminate()
 		self._callback(0.0, False)
+		self._gcode = []
 		self._sliceLog = []
 
 		sendThread = threading.Thread(target=self._sendProcess, args=(self._process.stdin, sendList))
@@ -132,16 +140,18 @@ class Engine(object):
 		line = self._process.stdout.readline()
 		while len(line):
 			line = line.strip()
-			self._sliceLog.append(line.strip())
+			self._gcode.append(line.strip())
 			line = self._process.stdout.readline()
 		for line in self._process.stderr:
 			self._sliceLog.append(line.strip())
 		returnCode = self._process.wait()
 		sendThread.join()
+		for line in self._sliceLog:
+			print line
+		self.resultPoints = []
 		if returnCode == 0:
-			self.resultPoints = []
 			p = [0.0, 0.0, 0.0]
-			for line in self._sliceLog:
+			for line in self._gcode:
 				g = getCodeInt(line, 'G', None)
 				if g == 0 or g == 1:
 					p[0] = getCodeFloat(line, 'X', p[0])
@@ -150,14 +160,15 @@ class Engine(object):
 				self.resultPoints.append(p[:])
 			self._callback(1.0, True)
 		else:
-			for line in self._sliceLog:
-				print line
 			self._callback(-1.0, False)
 		self._process = None
 
 	def _sendProcess(self, stdin, sendList):
 		for item in sendList:
-			stdin.write(item)
+			try:
+				stdin.write(item)
+			except IOError:
+				pass
 
 	def _engineSettings(self):
 		settings = {
@@ -167,11 +178,23 @@ class Engine(object):
 			'travelHeight': int(profile.getProfileSettingFloat('travel_height') * 1000),
 			'cutDepth': int(profile.getProfileSettingFloat('cut_depth') * 1000),
 			'cutDepthStep': int(profile.getProfileSettingFloat('cut_depth_step') * 1000),
+			'engravePathOffset': int(profile.getProfileSettingFloat('drill_diameter') * 1000 / 2),
 			'engraveDepth': int(profile.getProfileSettingFloat('engrave_depth') * 1000),
 
 			'startCode': profile.getAlterationFileContents('start.gcode'),
 			'endCode': profile.getAlterationFileContents('end.gcode'),
 		}
+		if profile.getProfileSetting('engrave_position') == 'Center':
+			settings['engravePathOffset'] = 0
+		if profile.getProfileSetting('engrave_position') == 'Outside':
+			settings['engravePathOffset'] = -settings['engravePathOffset']
+		if profile.getProfileSetting('tabs_enable') == 'True':
+			settings['tabDepth'] = settings['cutDepth'] - int(profile.getProfileSettingFloat('tab_height') * 1000)
+			settings['tabWidth'] = int(profile.getProfileSettingFloat('tab_width') * 1000)
+			settings['minTabDistance'] = int(profile.getProfileSettingFloat('tab_min_distance') * 1000)
+			settings['maxTabDistance'] = int(profile.getProfileSettingFloat('tab_max_distance') * 1000)
+		else:
+			settings['tabDepth'] = settings['cutDepth']
 		return settings
 
 	def _runSliceProcess(self, cmdList):

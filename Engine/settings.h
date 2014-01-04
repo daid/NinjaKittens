@@ -26,7 +26,12 @@ public:
     int travelFeedrate;
     int cutDepth;
     int cutDepthStep;
+    int engravePathOffset;
     int engraveDepth;
+    int tabWidth;
+    int tabDepth;
+    int minTabDistance;
+    int maxTabDistance;
     
     const char* startCode;
     const char* endCode;

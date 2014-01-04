@@ -2,10 +2,17 @@ __copyright__ = "Copyright (C) 2013 David Braam - Released under terms of the AG
 
 from NK.util import engine
 
+def colorDist(c1, c2):
+	dist = abs((c1 & 0xFF) - (c2 & 0xFF))
+	dist += abs(((c1 >> 8) & 0xFF) - ((c2 >> 8) & 0xFF))
+	dist += abs(((c1 >> 16) & 0xFF) - ((c2 >> 16) & 0xFF))
+	return dist
+
 class Scene(object):
-	def __init__(self):
+	def __init__(self, updateCallback):
 		self._objectList = []
 		self.engine = engine.Engine(self._engineCallback)
+		self._updateCallback = updateCallback
 
 	def addObject(self, objInput):
 		objInput._position = -(objInput.getMin()) + complex(5, 5)
@@ -13,11 +20,20 @@ class Scene(object):
 			self._objectList.append(obj)
 			obj._position = objInput._position
 			for p in obj.paths:
-				p.type = 'cut'
+				if colorDist(p.color, 0x0000FF) < 32:
+					p.type = 'engrave'
+				elif colorDist(p.color, 0x404040) < 32:
+					p.type = 'ignore'
+				else:
+					p.type = 'cut'
 		self.update()
 
 	def getObjectList(self):
 		return self._objectList
+
+	def remove(self, obj):
+		self._objectList.remove(obj)
+		self.update()
 
 	def getObjectAt(self, p):
 		best = None
@@ -50,6 +66,9 @@ class Scene(object):
 	def update(self):
 		self.engine.runSlicer(self)
 
+	def isUpdateDone(self):
+		return self._updateReady
+
 	def _engineCallback(self, process, ready):
-		pass
-		#print process, ready
+		self._updateReady = ready
+		self._updateCallback()
