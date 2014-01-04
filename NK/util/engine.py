@@ -18,7 +18,13 @@ from NK.util import profile
 from NK.util import version
 
 def getEngineFilename():
-	return 'C:/Software/NinjaKittens/Engine/.bin/Debug/Engine.exe'
+	if platform.system() == 'Windows':
+		if os.path.exists('C:/Software/NinjaKittens/Engine/.bin/Debug/Engine.exe'):
+			return 'C:/Software/NinjaKittens/Engine/.bin/Debug/Engine.exe'
+		return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'Engine.exe'))
+	if hasattr(sys, 'frozen'):
+		return os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../..', 'Engine'))
+	return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'Engine'))
 
 def getCodeInt(line, code, default = None):
 	n = line.find(code) + 1
