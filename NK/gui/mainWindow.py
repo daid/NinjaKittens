@@ -9,6 +9,7 @@ from NK.util import profile
 from NK.gui import configBase
 from NK.gui import alterationPanel
 from NK.gui import sceneView
+from NK.gui import preferencesDialog
 from NK.gui.util import dropTarget
 
 class mainWindow(wx.Frame):
@@ -51,6 +52,8 @@ class mainWindow(wx.Frame):
 		self.Bind(wx.EVT_MENU, lambda e: self.scene.showPrintWindow(), i)
 		i = self.fileMenu.Append(-1, _("Save GCode..."))
 		self.Bind(wx.EVT_MENU, lambda e: self.scene.showSaveGCode(), i)
+		i = self.fileMenu.Append(-1, _("Save Trotec laser file (*.tsf)..."))
+		self.Bind(wx.EVT_MENU, self.OnTrotecLaser, i)
 		i = self.fileMenu.Append(-1, _("Show slice engine log..."))
 		self.Bind(wx.EVT_MENU, lambda e: self.scene._showSliceLog(), i)
 
@@ -397,6 +400,117 @@ class mainWindow(wx.Frame):
 
 	def OnQuit(self, e):
 		self.Close()
+
+	def OnTrotecLaser(self, e):
+		import numpy
+		if len(self.scene._scene.engine.resultPoints) < 1:
+			return
+		dlg=wx.FileDialog(self, "Save Trotec laser file", os.path.split(profile.getPreference('lastFile'))[0], style=wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
+		dlg.SetWildcard("Trotec (*.tsf)|*.tsf")
+		if dlg.ShowModal() != wx.ID_OK:
+			dlg.Destroy()
+			return
+		filename = dlg.GetPath()
+		dlg.Destroy()
+		cutPolygons = []
+		engravePolygons = []
+		cutZ = -profile.getProfileSettingFloat('cut_depth')
+		engraveZ = -profile.getProfileSettingFloat('engrave_depth')
+		curPath = None
+		for p in self.scene._scene.engine.resultPoints:
+			if abs(p[2] - cutZ) < 0.01:
+				if curPath is None:
+					curPath = [p]
+					cutPolygons.append(curPath)
+				else:
+					curPath.append(p)
+			elif abs(p[2] - engraveZ) < 0.01:
+				if curPath is None:
+					curPath = [p]
+					engravePolygons.append(curPath)
+				else:
+					curPath.append(p)
+			else:
+				curPath = None
+		minX = 1000000
+		maxX =-1000000
+		minY = 1000000
+		maxY =-1000000
+		for poly in cutPolygons:
+			for p in poly:
+				if p[0] < minX:
+					minX = p[0]
+				if p[1] < minY:
+					minY = p[1]
+				if p[0] > maxX:
+					maxX = p[0]
+				if p[1] > maxY:
+					maxY = p[1]
+		for poly in engravePolygons:
+			for p in poly:
+				if p[0] < minX:
+					minX = p[0]
+				if p[1] < minY:
+					minY = p[1]
+				if p[0] > maxX:
+					maxX = p[0]
+				if p[1] > maxY:
+					maxY = p[1]
+
+		dpi = 500.0
+		f = open(filename, "wb")
+		f.write('<!-- Version: 9.4.2.1034>\r\n')
+		f.write('<!-- PrintingApplication: ps2tsf.exe>\r\n')
+		f.write('<BegGroup: Header>\r\n')
+		f.write('<ProcessMode: Standard>\r\n')
+		f.write('<Size: %.2f;%.2f>\r\n' % (maxX - minX+1.0, maxY - minY+1.0))
+		f.write('<MaterialGroup: Rubber>\r\n')
+		f.write('<MaterialName: 2.3 mm>\r\n')
+		f.write('<JobName: %s.eps>\r\n' % (os.path.basename(filename)))
+		f.write('<JobNumber: 1>\r\n')
+		f.write('<Resolution: %i>\r\n' % (dpi))
+		f.write('<Cutline: none>\r\n')
+		f.write('<EndGroup: Header>\r\n')
+		f.write('<BegGroup: Bitmap>\r\n')
+		bmpMagic = """eJztyTEKwkAURdFvJzbBHVimTG3CIAMpg4UuwiaQFWTlwjgDVu5AOOdxqzc9nnndrpdhHFJe9tc5
+mlTra3sX8T5GHOqa2/f/VUppAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPCHpvme1y2dPr1q6Hs="""
+		import base64
+		import zlib
+		f.write(zlib.decompress(base64.decodestring(bmpMagic)))
+		f.write('<EndGroup: Bitmap>\r\n')
+		f.write('<BegGroup: DrawCommands>\r\n')
+
+		for poly in cutPolygons:
+			f.write('<DrawPolygon: %i;255;0;0' % (len(poly)))
+			for p in poly:
+				f.write(';%i;%i' % (p[0]/25.4*dpi, p[1]/25.4*dpi))
+			f.write('>\r\n')
+		for poly in engravePolygons:
+			f.write('<DrawPolygon: %i;0;0;255' % (len(poly)))
+			for p in poly:
+				f.write(';%i;%i' % (p[0]/25.4*dpi, p[1]/25.4*dpi))
+			f.write('>\r\n')
+		f.write('<EndGroup: DrawCommands>\r\n')
+		f.close()
 
 class normalSettingsPanel(configBase.configPanelBase):
 	"Main user interface window"

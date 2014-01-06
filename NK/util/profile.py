@@ -159,7 +159,7 @@ setting('cut_depth_step',            1.0, float, 'advanced', _('Quality')).setRa
 setting('travel_height',             5.0, float, 'advanced', _('Quality')).setRange(0.1).setLabel(_("Travel height (mm)"), _(""))
 setting('travel_speed',             50.0, float, 'advanced', _('Speed')).setRange(0.1).setLabel(_("Travel speed (mm/s)"), _("Speed at which travel moves are done."))
 
-setting('engrave_depth',             1.0, float, 'basic',    _('Engrave')).setRange(0.01).setLabel(_("Engrave depth (mm)"), _(""))
+setting('engrave_depth',             1.5, float, 'basic',    _('Engrave')).setRange(0.01).setLabel(_("Engrave depth (mm)"), _(""))
 setting('engrave_position',     'Inside', [_('Inside'), _('Outside'), _('Center')], 'basic',    _('Engrave')).setLabel(_("Engrave position"), _(""))
 
 setting('tabs_enable',              True, bool,  'basic',    _('Holding tabs')).setLabel(_("Enable tabs"), _(""))
