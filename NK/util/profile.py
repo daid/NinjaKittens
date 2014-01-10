@@ -20,6 +20,9 @@ settingsDictionary = {}
 # as the dictionary will not contain insertion order.
 settingsList = []
 
+#Stored profile presets
+presetList = []
+
 #Currently selected machine (by index) Cura support multiple machines in the same preferences and can switch between them.
 # Each machine has it's own index and unique name.
 _selectedMachineIndex = 0
@@ -301,17 +304,6 @@ def resetProfile():
 			continue
 		set.setValue(set.getDefault())
 
-	if getMachineSetting('machine_type') == 'ultimaker':
-		putProfileSetting('nozzle_size', '0.4')
-		if getMachineSetting('ultimaker_extruder_upgrade') == 'True':
-			putProfileSetting('retraction_enable', 'True')
-	elif getMachineSetting('machine_type') == 'ultimaker2':
-		putProfileSetting('nozzle_size', '0.4')
-		putProfileSetting('retraction_enable', 'True')
-	else:
-		putProfileSetting('nozzle_size', '0.5')
-		putProfileSetting('retraction_enable', 'True')
-
 def setProfileFromString(options):
 	options = base64.b64decode(options)
 	options = zlib.decompress(options)
@@ -412,6 +404,7 @@ def getPreferenceColour(name):
 
 def loadPreferences(filename):
 	global settingsList
+	global presetList
 	#Read a configuration file as global config
 	profileParser = ConfigParser.ConfigParser()
 	try:
@@ -431,6 +424,17 @@ def loadPreferences(filename):
 				if profileParser.has_option('machine_%d' % (n), set.getName()):
 					set.setValue(unicode(profileParser.get('machine_%d' % (n), set.getName()), 'utf-8', 'replace'), n)
 		n += 1
+
+	presetList = []
+	n = 0
+	while profileParser.has_section('preset_%d' % (n)):
+		if profileParser.has_option('preset_%d' % (n), 'name') and profileParser.has_option('preset_%d' % (n), 'data'):
+			name = unicode(profileParser.get('preset_%d' % (n), 'name'), 'utf-8', 'replace')
+			data = unicode(profileParser.get('preset_%d' % (n), 'data'), 'utf-8', 'replace')
+			presetList.append((name, data))
+			n += 1
+		else:
+			break
 
 	setActiveMachine(int(getPreferenceFloat('active_machine')))
 
@@ -466,6 +470,12 @@ def savePreferences(filename):
 			if set.isMachineSetting():
 				parser.set('machine_%d' % (n), set.getName(), set.getValue(n).encode('utf-8'))
 		n += 1
+
+	for n in xrange(0, getPresetCount()):
+		name, data = getPreset(n)
+		parser.add_section('preset_%d' % (n))
+		parser.set('preset_%d' % (n), 'name', name.encode('utf-8'))
+		parser.set('preset_%d' % (n), 'data', data.encode('utf-8'))
 	parser.write(open(filename, 'w'))
 
 def getPreference(name):
@@ -570,6 +580,17 @@ def removeMachine(index):
 
 	if _selectedMachineIndex >= index:
 		setActiveMachine(getMachineCount() - 1)
+
+def getPresetCount():
+	global presetList
+	return len(presetList)
+
+def getPreset(index):
+	global presetList
+	return presetList[index]
+
+def savePreset(name):
+	presetList.append((name, getProfileString()))
 
 ## Temp overrides for multi-extruder slicing and the project planner.
 tempOverride = {}

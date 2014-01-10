@@ -107,8 +107,12 @@ class mainWindow(wx.Frame):
 		#Machine menu for machine configuration/tooling
 		self.machineMenu = wx.Menu()
 		self.updateMachineMenu()
-
 		self.menubar.Append(self.machineMenu, _("Machine"))
+
+		#Preset menu for quickly switching pre-made profiles
+		self.presetMenu = wx.Menu()
+		self.updatePresetMenu()
+		self.menubar.Append(self.presetMenu, _("Presets"))
 
 		expertMenu = wx.Menu()
 
@@ -305,6 +309,20 @@ class mainWindow(wx.Frame):
 		i = self.machineMenu.Append(-1, _("Machine settings..."))
 		self.Bind(wx.EVT_MENU, self.OnMachineSettings, i)
 
+	def updatePresetMenu(self):
+		#Remove all items so we can rebuild the menu. Inserting items seems to cause crashes, so this is the safest way.
+		for item in self.presetMenu.GetMenuItems():
+			self.presetMenu.RemoveItem(item)
+
+		for n in xrange(profile.getPresetCount()):
+			i = self.presetMenu.Append(n + 0x2000, profile.getPreset(n)[0])
+			self.Bind(wx.EVT_MENU, lambda e: self.OnSelectPreset(e.GetId() - 0x2000), i)
+
+		self.presetMenu.AppendSeparator()
+
+		i = self.presetMenu.Append(-1, _("Save current settings as preset..."))
+		self.Bind(wx.EVT_MENU, self.OnPresetSave, i)
+
 	def OnLoadProfile(self, e):
 		dlg=wx.FileDialog(self, _("Select profile file to load"), os.path.split(profile.getPreference('lastFile'))[0], style=wx.FD_OPEN|wx.FD_FILE_MUST_EXIST)
 		dlg.SetWildcard("ini files (*.ini)|*.ini")
@@ -353,6 +371,22 @@ class mainWindow(wx.Frame):
 	def OnSelectMachine(self, index):
 		profile.setActiveMachine(index)
 		self.reloadSettingPanels()
+
+	def OnSelectPreset(self, index):
+		profile.setProfileFromString(profile.getPreset(index)[1])
+		self.updateProfileToAllControls()
+
+	def OnPresetSave(self, e):
+		dlg = wx.TextEntryDialog(self, _("Name for this preset?"), _("Preset name"), _(""))
+		if dlg.ShowModal() != wx.ID_OK:
+			dlg.Destroy()
+			return
+		name = dlg.GetValue()
+		dlg.Destroy()
+		if name == '':
+			return
+		profile.savePreset(name)
+		self.updatePresetMenu()
 
 	def OnExpertOpen(self, e):
 		ecw = expertConfig.expertConfigWindow(lambda : self.scene.sceneUpdated())
@@ -466,7 +500,9 @@ class mainWindow(wx.Frame):
 		f.write('<Size: %.2f;%.2f>\r\n' % (maxX - minX+1.0, maxY - minY+1.0))
 		f.write('<MaterialGroup: Rubber>\r\n')
 		f.write('<MaterialName: 2.3 mm>\r\n')
-		f.write('<JobName: %s.eps>\r\n' % (os.path.basename(filename)))
+		name = os.path.basename(filename)
+		name = os.path.splitext(name)[0]
+		f.write('<JobName: %s.eps>\r\n' % (name))
 		f.write('<JobNumber: 1>\r\n')
 		f.write('<Resolution: %i>\r\n' % (dpi))
 		f.write('<Cutline: none>\r\n')

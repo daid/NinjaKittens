@@ -95,11 +95,12 @@ class Engine(object):
 			commandList += ['-s', '%s=%s' % (k, str(v))]
 
 		sendList = []
+		resolution = max(0.1, profile.getProfileSettingFloat('drill_diameter') * 0.1)
 		for obj in scene.getObjectList():
 			cutPaths = filter(lambda p: p.isClosed() and p.type == 'cut', obj.paths)
 			sendList.append("%i\n" % (len(cutPaths)))
 			for path in cutPaths:
-				points = path.getPoints(profile.getProfileSettingFloat('drill_diameter') * 0.1)
+				points = path.getPoints(resolution)
 				sendList.append("%i\n" % (len(points)))
 				for p in points:
 					sendList.append("%i %i\n" % ((p[0].real + obj._position.real) * 1000, (p[0].imag + obj._position.imag) * 1000))
@@ -107,7 +108,23 @@ class Engine(object):
 			engravePaths = filter(lambda p: p.isClosed() and p.type == 'engrave', obj.paths)
 			sendList.append("%i\n" % (len(engravePaths)))
 			for path in engravePaths:
-				points = path.getPoints(profile.getProfileSettingFloat('drill_diameter') * 0.1)
+				points = path.getPoints(resolution)
+				sendList.append("%i\n" % (len(points)))
+				for p in points:
+					sendList.append("%i %i\n" % ((p[0].real + obj._position.real) * 1000, (p[0].imag + obj._position.imag) * 1000))
+
+			cutLines = filter(lambda p: not p.isClosed() and p.type == 'cut', obj.paths)
+			sendList.append("%i\n" % (len(cutLines)))
+			for path in cutLines:
+				points = path.getPoints(resolution)
+				sendList.append("%i\n" % (len(points)))
+				for p in points:
+					sendList.append("%i %i\n" % ((p[0].real + obj._position.real) * 1000, (p[0].imag + obj._position.imag) * 1000))
+
+			engraveLines = filter(lambda p: not p.isClosed() and p.type == 'engrave', obj.paths)
+			sendList.append("%i\n" % (len(engraveLines)))
+			for path in engraveLines:
+				points = path.getPoints(resolution)
 				sendList.append("%i\n" % (len(points)))
 				for p in points:
 					sendList.append("%i %i\n" % ((p[0].real + obj._position.real) * 1000, (p[0].imag + obj._position.imag) * 1000))

@@ -74,6 +74,14 @@ class DXF(drawing.Drawing):
 			for n in xrange(1, len(obj[10])):
 				p.addLineTo(float(obj[10][n]), float(obj[20][n]))
 			self._lastLine = p
+		elif type == 'CIRCLE':
+			cx = float(obj[10][0])
+			cy = float(obj[20][0])
+			r = float(obj[40][0])
+			p = self.addPath(cx, cy - r)
+			p.addArcTo(cx, cy + r, 180, r, r, False, False)
+			p.addArcTo(cx, cy - r, 180, r, r, False, False)
+			self._lastLine = p
 		else:
 			print 'type=%s' % type
 			for k in obj.keys():

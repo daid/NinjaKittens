@@ -52,6 +52,8 @@ class Path(object):
 		return self._isClosed
 
 	def closePath(self):
+		if len(self._nodes) < 1:
+			return
 		if abs(self._nodes[-1].position - self._startPoint) > 0.01:
 			self._nodes.append(Node(Node.LINE, self._startPoint))
 		self._isClosed = True

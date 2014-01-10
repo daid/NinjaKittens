@@ -10,6 +10,8 @@ class Drawing
 public:
     Polygons cutPolygons;
     Polygons engravePolygons;
+    Polygons cutLines;
+    Polygons engraveLines;
     
     void readFromStdin()
     {
@@ -34,6 +36,34 @@ public:
             int pointCount;
             scanf("%i", &pointCount);
             PolygonRef poly = engravePolygons.newPoly();
+            for(int i=0; i<pointCount; i++)
+            {
+                int x, y;
+                scanf("%i %i", &x, &y);
+                poly.add(Point(x, y));
+            }
+        }
+
+        scanf("%i", &polygonCount);
+        for(int n=0; n<polygonCount; n++)
+        {
+            int pointCount;
+            scanf("%i", &pointCount);
+            PolygonRef poly = cutLines.newPoly();
+            for(int i=0; i<pointCount; i++)
+            {
+                int x, y;
+                scanf("%i %i", &x, &y);
+                poly.add(Point(x, y));
+            }
+        }
+
+        scanf("%i", &polygonCount);
+        for(int n=0; n<polygonCount; n++)
+        {
+            int pointCount;
+            scanf("%i", &pointCount);
+            PolygonRef poly = engraveLines.newPoly();
             for(int i=0; i<pointCount; i++)
             {
                 int x, y;
@@ -235,8 +265,13 @@ public:
             PartOrderOptimizer order(gcode.getPositionXY(), parts);
             for(unsigned int n=0; n<parts.size(); n++)
             {
-                processPart(parts[order[n]], config.engraveDepth);
+                processPart(parts[order[n]], config.engraveDepth, true);
             }
+        }
+
+        {
+            Polygons paths = drawing.engraveLines;
+            processPart(paths, config.engraveDepth, false);
         }
 
         {
@@ -244,12 +279,12 @@ public:
             vector<Polygons> parts = paths.splitIntoParts();
             PartOrderOptimizer order(gcode.getPositionXY(), parts);
             for(unsigned int n=0; n<parts.size(); n++)
-                processPart(parts[order[n]], config.cutDepth);
+                processPart(parts[order[n]], config.cutDepth, true);
         }
         gcode.addCode(config.endCode);
     }
     
-    void processPart(Polygons paths, int totalDepth)
+    void processPart(Polygons paths, int totalDepth, bool closed)
     {
         int cutOrder[paths.size()];
         for(unsigned int n=0; n<paths.size(); n++)
@@ -296,8 +331,18 @@ public:
                 depth += config.cutDepthStep;
                 if (depth > totalDepth)
                     depth = totalDepth;
-                HoldingTabProcessor holdingTabProcessor(paths[n], depth, config.tabWidth, config.tabDepth, config.minTabDistance, config.maxTabDistance);
-                holdingTabProcessor.write(gcode, config.cutFeedrate);
+                if (closed)
+                {
+                    HoldingTabProcessor holdingTabProcessor(paths[n], depth, config.tabWidth, config.tabDepth, config.minTabDistance, config.maxTabDistance);
+                    holdingTabProcessor.write(gcode, config.cutFeedrate);
+                }else{
+                    gcode.setZ(config.travelHeight);
+                    gcode.addMove(gcode.getPositionXY(), config.travelFeedrate);
+                    gcode.addMove(paths[n][0], config.travelFeedrate);
+                    gcode.setZ(-depth);
+                    for(unsigned int i=0; i<paths[n].size(); i++)
+                        gcode.addMove(paths[n][i], config.cutFeedrate);
+                }
             }while(depth < totalDepth);
         }
     }
