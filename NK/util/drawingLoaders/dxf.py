@@ -14,6 +14,7 @@ class DXF(drawing.Drawing):
 		super(DXF, self).__init__()
 		self._lastLine = None
 		self._polyLine = None
+		self._lastLinePoint = None
 
 		entityType = 'NONE'
 		sectionName = 'NONE'

@@ -535,13 +535,13 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPCHpvme1y2dPr1q6Hs="""
 		f.write('<EndGroup: Bitmap>\r\n')
 		f.write('<BegGroup: DrawCommands>\r\n')
 
-		for poly in cutPolygons:
-			f.write('<DrawPolygon: %i;255;0;0' % (len(poly)))
+		for poly in engravePolygons:
+			f.write('<DrawPolygon: %i;0;0;255' % (len(poly)))
 			for p in poly:
 				f.write(';%i;%i' % (p[0]/25.4*dpi, p[1]/25.4*dpi))
 			f.write('>\r\n')
-		for poly in engravePolygons:
-			f.write('<DrawPolygon: %i;0;0;255' % (len(poly)))
+		for poly in cutPolygons:
+			f.write('<DrawPolygon: %i;255;0;0' % (len(poly)))
 			for p in poly:
 				f.write(';%i;%i' % (p[0]/25.4*dpi, p[1]/25.4*dpi))
 			f.write('>\r\n')

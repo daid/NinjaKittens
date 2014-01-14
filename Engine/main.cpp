@@ -260,6 +260,11 @@ public:
     void process()
     {
         {
+            Polygons paths = drawing.engraveLines;
+            processPart(paths, config.engraveDepth, false);
+        }
+
+        {
             Polygons paths = drawing.engravePolygons.offset(-config.engravePathOffset);
             vector<Polygons> parts = paths.splitIntoParts();
             PartOrderOptimizer order(gcode.getPositionXY(), parts);
@@ -270,8 +275,8 @@ public:
         }
 
         {
-            Polygons paths = drawing.engraveLines;
-            processPart(paths, config.engraveDepth, false);
+            Polygons paths = drawing.cutLines;
+            processPart(paths, config.cutDepth, false);
         }
 
         {
@@ -281,6 +286,7 @@ public:
             for(unsigned int n=0; n<parts.size(); n++)
                 processPart(parts[order[n]], config.cutDepth, true);
         }
+
         gcode.addCode(config.endCode);
     }
     
