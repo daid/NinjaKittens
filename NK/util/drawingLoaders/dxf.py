@@ -83,6 +83,15 @@ class DXF(drawing.Drawing):
 			p.addArcTo(cx, cy + r, 180, r, r, False, False)
 			p.addArcTo(cx, cy - r, 180, r, r, False, False)
 			self._lastLine = p
+		elif type == 'ARC':
+			cx = float(obj[10][0])
+			cy = float(obj[20][0])
+			r = float(obj[40][0])
+			a0 = float(obj[50][0])
+			a1 = float(obj[51][0])
+			p = self.addPath(cx - math.sin(a0 / 180.0 * math.pi) * r, cy - math.cos(a0 / 180.0 * math.pi) * r)
+			p.addArcTo(cx - math.sin(a1 / 180.0 * math.pi) * r, cy - math.cos(a1 / 180.0 * math.pi) * r, abs(a0 - a1), r, r, False, False)
+			self._lastLine = p
 		else:
 			print 'type=%s' % type
 			for k in obj.keys():

@@ -207,6 +207,23 @@ class Drawing(object):
 							path1._nodes += path2._nodes
 							path2._nodes = []
 
+		for path1 in self.paths:
+			if not path1.isClosed() and len(path1._nodes) > 0:
+				for path2 in self.paths:
+					if path1 != path2 and not path2.isClosed() and len(path2._nodes) > 0:
+						if abs(path1._nodes[-1].position - path2._nodes[-1].position) < 0.001:
+							for n in xrange(len(path2._nodes) - 2, -2, -1):
+								if n > -1:
+									p = path2._nodes[n].position
+								else:
+									p = path2._startPoint
+								node = path2._nodes[n+1]
+								if node.type == Node.ARC:
+									path1.addArcTo(p.real, p.imag, node.rotation, node.radius.real, node.radius.imag, node.large, not node.sweep)
+								else:
+									path1.addLineTo(p.real, p.imag)
+							path2._nodes = []
+
 		cleanList = []
 		for path in self.paths:
 			if len(path._nodes) < 1:
