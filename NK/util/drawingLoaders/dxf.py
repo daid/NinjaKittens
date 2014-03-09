@@ -89,8 +89,8 @@ class DXF(drawing.Drawing):
 			r = float(obj[40][0])
 			a0 = float(obj[50][0])
 			a1 = float(obj[51][0])
-			p = self.addPath(cx - math.sin(a0 / 180.0 * math.pi) * r, cy - math.cos(a0 / 180.0 * math.pi) * r)
-			p.addArcTo(cx - math.sin(a1 / 180.0 * math.pi) * r, cy - math.cos(a1 / 180.0 * math.pi) * r, abs(a0 - a1), r, r, False, False)
+			p = self.addPath(cx + math.cos(a0 / 180.0 * math.pi) * r, cy + math.sin(a0 / 180.0 * math.pi) * r)
+			p.addArcTo(cx + math.cos(a1 / 180.0 * math.pi) * r, cy + math.sin(a1 / 180.0 * math.pi) * r, abs(a0 - a1), r, r, a0 > a1, True)
 			self._lastLine = p
 		else:
 			print 'type=%s' % type
