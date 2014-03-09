@@ -72,8 +72,9 @@ class DXF(drawing.Drawing):
 			self._lastLine = p
 		elif type == 'SPLINE':
 			p = self.addPath(float(obj[10][0]), float(obj[20][0]))
-			for n in xrange(1, len(obj[10])):
-				p.addLineTo(float(obj[10][n]), float(obj[20][n]))
+			node = p.addSplineTo(float(obj[10][-1]), float(obj[20][-1]))
+			for n in xrange(1, len(obj[10]) - 1):
+				node.addControlPoint(float(obj[10][n]), float(obj[20][n]))
 			self._lastLine = p
 		elif type == 'CIRCLE':
 			cx = float(obj[10][0])

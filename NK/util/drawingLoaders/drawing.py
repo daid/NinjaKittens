@@ -10,6 +10,7 @@ class Node(object):
 	LINE = 0
 	ARC = 1
 	CURVE = 2
+	SPLINE = 3
 
 	def __init__(self, type, position):
 		self.type = type
@@ -26,6 +27,27 @@ class ArcNode(Node):
 		self.radius = radius
 		self.large = large
 		self.sweep = sweep
+
+class SplineNode(Node):
+	def __init__(self, position):
+		super(SplineNode, self).__init__(Node.SPLINE, position)
+		self._control_points = []
+
+	def interpolate(self, p1, f):
+		tmpList = [p1] + self._control_points + [self.position]
+		return self._interpolate(tmpList, f)
+
+	def _interpolate(self, points, f):
+		res = []
+		for n in xrange(0, len(points) - 1):
+			p = (points[n] * (1.0-f)) + (points[n+1] * (f))
+			res.append(p)
+		if len(res) > 1:
+			return self._interpolate(res, f)
+		return res[0]
+
+	def addControlPoint(self, x, y):
+		self._control_points.append(complex(x, y))
 
 class Path(object):
 	def __init__(self, x, y, matrix=numpy.matrix(numpy.identity(3, numpy.float64))):
@@ -47,6 +69,11 @@ class Path(object):
 		node.cp1 = self._m(complex(cp1x, cp1y))
 		node.cp2 = self._m(complex(cp2x, cp2y))
 		self._nodes.append(node)
+
+	def addSplineTo(self, x, y):
+		node = SplineNode(self._m(complex(x, y)))
+		self._nodes.append(node)
+		return node
 
 	def isClosed(self):
 		return self._isClosed
@@ -140,6 +167,20 @@ class Path(object):
 					f = n / float(segments)
 					g = 1.0-f
 					point = p1*g*g*g + cp1*3.0*g*g*f + cp2*3.0*g*f*f + p2*f*f*f
+					pointList.append((point, idx))
+
+				pointList.append((p2, idx))
+				p1 = p2
+
+			elif node.type == Node.SPLINE:
+				p2 = node.position
+				pCenter = node.interpolate(p1, 0.5)
+
+				dist = abs(pCenter - p1) + abs(pCenter - p2)
+				segments = int(dist / accuracy) + 1
+				for n in xrange(1, segments):
+					f = n / float(segments)
+					point = node.interpolate(p1, f)
 					pointList.append((point, idx))
 
 				pointList.append((p2, idx))
