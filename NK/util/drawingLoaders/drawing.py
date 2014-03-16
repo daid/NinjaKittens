@@ -10,7 +10,7 @@ class Node(object):
 	LINE = 0
 	ARC = 1
 	CURVE = 2
-	SPLINE = 3
+	NURBS = 3
 
 	def __init__(self, type, position):
 		self.type = type
@@ -28,23 +28,38 @@ class ArcNode(Node):
 		self.large = large
 		self.sweep = sweep
 
-class SplineNode(Node):
-	def __init__(self, position):
-		super(SplineNode, self).__init__(Node.SPLINE, position)
-		self._control_points = []
+class NURBSNode(Node):
+	def __init__(self, position, degree, knots, control_points):
+		super(NURBSNode, self).__init__(Node.NURBS, position)
+		self._degree = degree
+		self._knots = knots
+		self._control_points = control_points
 
 	def interpolate(self, p1, f):
-		tmpList = [p1] + self._control_points + [self.position]
-		return self._interpolate(tmpList, f)
+		#Warning, Cubic only (degree = 3)
+		# Source: http://and-what-happened.blogspot.nl/2011/03/whos-afraid-of-non-uniform-rational-b.html
 
-	def _interpolate(self, points, f):
-		res = []
-		for n in xrange(0, len(points) - 1):
-			p = (points[n] * (1.0-f)) + (points[n+1] * (f))
-			res.append(p)
-		if len(res) > 1:
-			return self._interpolate(res, f)
-		return res[0]
+		# Potential improvement: http://www.morethantechnical.com/2013/12/18/simple-nurbs-renderer-w-code/
+		pointList = [p1] + self._control_points + [self.position]
+		i = 0
+		while f > self._knots[i + 1]:
+			i += 1
+		k = self._knots[i-2:i+4]
+		cp = pointList[i-3:i+2]
+
+		l = ( ( k[3] - f ) / ( ( k[3] - k[2] ) * ( k[3] - k[1] ) ) )
+		r = ( ( f - k[2] ) / ( ( k[3] - k[2] ) * ( k[4] - k[2] ) ) )
+		a = ( ( r * ( f - k[2] ) ) / ( k[5] - k[2] ) )
+		b = ( ( ( r * ( k[4] - f ) ) + ( l * ( f - k[1] ) ) ) / ( k[4] - k[1] ) )
+		c = ( ( l * ( k[3] - f ) ) / ( k[3] - k[0] ) )
+
+		bw0 = ( c * ( k[3] - f ) )
+		bw1 = ( ( b * ( k[4] - f ) ) + ( c * ( f - k[0] ) ) )
+		bw2 = ( ( a * ( k[5] - f ) ) + ( b * ( f - k[1] ) ) )
+		bw3 = ( a * ( f - k[2] ) )
+		w = bw0 + bw1 + bw2 + bw3
+
+		return (cp[0] * bw0 + cp[1] * bw1 + cp[2] * bw2 + cp[3] * bw3) / w
 
 	def addControlPoint(self, x, y):
 		self._control_points.append(complex(x, y))
@@ -70,8 +85,10 @@ class Path(object):
 		node.cp2 = self._m(complex(cp2x, cp2y))
 		self._nodes.append(node)
 
-	def addSplineTo(self, x, y):
-		node = SplineNode(self._m(complex(x, y)))
+	def addNURBS(self, x, y, degree, knots, control_points):
+		for n in xrange(0, len(control_points)):
+			control_points[n] = self._m(control_points[n])
+		node = NURBSNode(self._m(complex(x, y)), degree, knots, control_points)
 		self._nodes.append(node)
 		return node
 
@@ -172,7 +189,7 @@ class Path(object):
 				pointList.append((p2, idx))
 				p1 = p2
 
-			elif node.type == Node.SPLINE:
+			elif node.type == Node.NURBS:
 				p2 = node.position
 				pCenter = node.interpolate(p1, 0.5)
 

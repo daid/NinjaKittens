@@ -72,9 +72,12 @@ class DXF(drawing.Drawing):
 			self._lastLine = p
 		elif type == 'SPLINE':
 			p = self.addPath(float(obj[10][0]), float(obj[20][0]))
-			node = p.addSplineTo(float(obj[10][-1]), float(obj[20][-1]))
+			degree = int(obj[71][0])
+			knots = map(float, obj[40])
+			control_points = []
 			for n in xrange(1, len(obj[10]) - 1):
-				node.addControlPoint(float(obj[10][n]), float(obj[20][n]))
+				control_points.append(complex(float(obj[10][n]), float(obj[20][n])))
+			p.addNURBS(float(obj[10][-1]), float(obj[20][-1]), degree, knots, control_points)
 			self._lastLine = p
 		elif type == 'CIRCLE':
 			cx = float(obj[10][0])
