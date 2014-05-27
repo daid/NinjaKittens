@@ -15,3 +15,5 @@ python
 output.txt
 *.bak
 .obj
+*.o
+Engine/Engine
