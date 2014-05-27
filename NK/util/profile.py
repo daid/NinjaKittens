@@ -180,6 +180,8 @@ G90 ; Absolute positioning
 #######################################################################################
 setting('end.gcode', """;End GCode
 ;{profile_string}
+G01 Z{travel_height} F{travel_speed}
+G00 X0.000 Y0.000 F{travel_speed}
 """, str, 'alteration', 'alteration')
 #######################################################################################
 
