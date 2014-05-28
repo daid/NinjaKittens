@@ -24,7 +24,7 @@ def getEngineFilename():
 		return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'Engine.exe'))
 	if hasattr(sys, 'frozen'):
 		return os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../..', 'Engine'))
-	return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'Engine'))
+	return os.path.abspath(os.path.join(os.path.dirname(__file__), '../../Engine', 'Engine'))
 
 def getCodeInt(line, code, default = None):
 	n = line.find(code) + 1
