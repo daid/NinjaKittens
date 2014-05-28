@@ -158,7 +158,7 @@ def _(n):
 setting('cut_depth',                 5.0, float, 'basic',    _('Quality')).setRange(0.01).setLabel(_("Cut depth (mm)"), _(""))
 setting('drill_diameter',            4.0, float, 'basic',    _('Quality')).setRange(0.0001).setLabel(_("Drill diameter (mm)"), _(""))
 setting('cutting_feedrate',           10, float, 'basic',    _('Speed')).setRange(1).setLabel(_("Cutting speed (mm/s)"), _(""))
-setting('cut_depth_step',            1.0, float, 'advanced', _('Quality')).setRange(1).setLabel(_("Cut depth step (mm)"), _(""))
+setting('cut_depth_step',            1.0, float, 'advanced', _('Quality')).setRange(0.1).setLabel(_("Cut depth step (mm)"), _(""))
 setting('travel_height',             5.0, float, 'advanced', _('Quality')).setRange(0.1).setLabel(_("Travel height (mm)"), _(""))
 setting('travel_speed',             50.0, float, 'advanced', _('Speed')).setRange(0.1).setLabel(_("Travel speed (mm/s)"), _("Speed at which travel moves are done."))
 
